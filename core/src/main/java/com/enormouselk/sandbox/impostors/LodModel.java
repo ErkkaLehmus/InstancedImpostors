@@ -46,9 +46,10 @@ import net.mgsx.gltf.loaders.glb.GLBLoader;
 import net.mgsx.gltf.scene3d.scene.SceneAsset;
 import net.mgsx.gltf.scene3d.scene.SceneModel;
 
-import java.nio.Buffer;
-import java.nio.FloatBuffer;
+//import java.nio.Buffer;
+//import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+//import java.util.Arrays;
 
 class LodModel {
 
@@ -79,12 +80,16 @@ class LodModel {
     private int decalIndex;
     private float[] LODdistances;
 
+    private boolean hasDecal;
+
 
     public InstancedShaderProvider instancedShaderProvider;
     public String ID;
     public Texture texture;
     public Renderable[] renderables;
-    public FloatBuffer[] offsets;
+
+    //public FloatBuffer[] offsets;
+    public LotsOfFloats[] offsets;
     public int decalCount;
     public int[] lodCount;
 
@@ -108,7 +113,6 @@ class LodModel {
     float tmpFloat;
 
     int LOD_MAX;
-    //public int DECAL_RENDERABLE;
     int maxDecalInstances;
     int maxModelInstances;
 
@@ -136,23 +140,35 @@ class LodModel {
      * @param environment environment
      * @param shaderProvider shaderProvider
      */
-    public LodModel(String filename, String ID, int lodMax, int maxInstances, float decalDistance, float maxDistance, int textureSize, Environment environment, InstancedShaderProvider shaderProvider) {
+    public LodModel(String filename, String ID, int lodMax, boolean generateImpostor, int maxInstances, float decalDistance, float maxDistance, int textureSize, Environment environment, InstancedShaderProvider shaderProvider) {
         this.ID = ID;
         this.instancedShaderProvider = shaderProvider;
         LOD_MAX = lodMax;
-        decalIndex = LOD_MAX;
 
-        int maxTextureSize = getMaxTextureSize();
-        if (textureSize > maxTextureSize) textureSize = maxTextureSize;
-        this.textureSize = textureSize;
+        this.hasDecal = generateImpostor;
+        if (generateImpostor) {
+            decalIndex = LOD_MAX;
+            int maxTextureSize = getMaxTextureSize();
+            if (textureSize > maxTextureSize) textureSize = maxTextureSize;
+            this.textureSize = textureSize;
+            this.maxDecalInstances = maxInstances;
+            maxModelInstances = maxInstances;
+            //below is what I'd actually like to have, but that will need more testing to ensure it works reliably
+            //maxModelInstances = MathUtils.ceilPositive(maxInstances * decalDistance);
+        }
+        else {
+            decalIndex = -1;
+            this.textureSize = 0;
+            this.maxDecalInstances = 0;
+            maxModelInstances = maxInstances;
+        }
 
         initLodDistances(decalDistance * maxDistance);
 
-        this.maxDecalInstances = maxInstances;
-        maxModelInstances = MathUtils.ceilPositive(maxInstances * decalDistance);
+
 
         lodCount = new int[LOD_MAX];
-        offsets = new FloatBuffer[LOD_MAX + 1];
+        offsets = new LotsOfFloats[LOD_MAX + 1];
         q = new Quaternion();
         mat4 = new Matrix4();
         renderables = new Renderable[LOD_MAX + 1];
@@ -166,7 +182,7 @@ class LodModel {
                 renderables[i].shader.dispose();
                 renderables[i].meshPart.mesh.dispose();
             }
-            if (offsets[i] != null) offsets[i].clear();
+            //if (offsets[i] != null) offsets[i].clear();
         }
     }
 
@@ -175,9 +191,19 @@ class LodModel {
         LODdistances = new float[LOD_MAX];
 
         float dist = decalDistance;
-        for (int i = decalIndex-1; i >= 0 ; i--) {
-            LODdistances[i] = dist;
-            dist = dist / 2f;
+
+        if (hasDecal) {
+            for (int i = decalIndex - 1; i >= 0; i--) {
+                LODdistances[i] = dist;
+                dist = dist / 2f;
+            }
+        }
+        else
+        {
+            for (int i = LOD_MAX-2; i >= 0; i--) {
+                LODdistances[i] = dist;
+                dist = dist / 2f;
+            }
         }
     }
 
@@ -189,7 +215,8 @@ class LodModel {
         if (maxModelInstances > oldMax)
         {
             for (int i = 0; i < decalIndex; i++) {
-                offsets[i] = BufferUtils.newFloatBuffer(maxModelInstances * 3); // 16 floats for mat4
+                offsets[i].grow(maxModelInstances * 3);
+                //offsets[i] = new LotsOfFloats(maxModelInstances * 3); // 16 floats for mat4
             }
         }
 
@@ -198,7 +225,8 @@ class LodModel {
 
     public int getDecalDistance()
     {
-        return (int) LODdistances[decalIndex-1];
+        if (hasDecal) return (int) LODdistances[decalIndex-1];
+        return -1;
     }
 
     /**
@@ -211,7 +239,8 @@ class LodModel {
         }
 
         decalCount = 0;
-        offsets[decalIndex].position(0);
+        if (hasDecal)
+            offsets[decalIndex].position(0);
     }
 
     /**
@@ -300,8 +329,17 @@ class LodModel {
 
     private int getLODlevel(float distance)
     {
-        for (int i = decalIndex-1; i >= 0; i--) {
-            if (distance > LODdistances[i]) return i+1;
+        if (hasDecal) {
+            for (int i = decalIndex - 1; i >= 0; i--) {
+                if (distance > LODdistances[i]) return i + 1;
+            }
+        }
+        else
+        {
+            for (int i = LOD_MAX-2; i>=0; i--) {
+                if (distance > LODdistances[i]) return i+1;
+            }
+            return 0;
         }
         return 0;
     }
@@ -312,16 +350,26 @@ class LodModel {
      */
     public void pushInstanceData()
     {
-        if (decalCount > 0) {
+        if (hasDecal) {
+            if (decalCount > 0) {
+                renderables[decalIndex].meshPart.mesh.setInstanceData(offsets[decalIndex].data, 0, offsets[decalIndex].position);
+
+                //this was the old buffer-based approach
+            /*
             ((Buffer) offsets[decalIndex]).position(0);
             renderables[decalIndex].meshPart.mesh.setInstanceData(offsets[decalIndex], decalCount*DECAL_INSTANCE_DATA_SIZE);
+             */
+            }
         }
 
         for (int i = 0; i < LOD_MAX ; i++) {
             if (lodCount[i] > 0)
             {
+                renderables[i].meshPart.mesh.setInstanceData(offsets[i].data,0, offsets[i].position);
+                /*
                 ((Buffer) offsets[i]).position(0);
                 renderables[i].meshPart.mesh.setInstanceData(offsets[i], lodCount[i] * 3);
+                 */
             }
         }
     }
@@ -337,9 +385,12 @@ class LodModel {
                 batch.render(renderables[i]);
             }
         }
-        if (decalCount > 0) {
-            texture.bind(0);
-            batch.render(getImpostor());
+
+        if (hasDecal) {
+            if (decalCount > 0) {
+                texture.bind(0);
+                batch.render(getImpostor());
+            }
         }
     }
 
@@ -359,7 +410,8 @@ class LodModel {
 
         Mesh lod2 = loadFromGLB(modelFile + "-lod2.glb");
         setupInstancedMesh(lod2, 2, environment);
-        setupInstancedDecals(2);
+
+        if (hasDecal) setupInstancedDecals(2);
     }
 
     private Mesh loadFromGLB(String filename) {
@@ -496,15 +548,17 @@ class LodModel {
         Vector3 instanceLocation = new Vector3(0, 0, 0);
         Renderable renderable = renderables[fromIndex];
 
-        ((Buffer) offsets[fromIndex]).position(0);
+        offsets[fromIndex].position(0);
+        //((Buffer) offsets[fromIndex]).position(0);
 
         offsets[fromIndex].put(0);
         offsets[fromIndex].put(0);
         offsets[fromIndex].put(0);
 
-        ((Buffer) offsets[fromIndex]).position(0);
+        //((Buffer) offsets[fromIndex]).position(0);
 
-        renderable.meshPart.mesh.setInstanceData(offsets[fromIndex], 3);
+        renderable.meshPart.mesh.setInstanceData(offsets[fromIndex].data,0, 3);
+        //renderable.meshPart.mesh.setInstanceData(offsets[fromIndex], 3);
 
         ModelBatch modelBatch = new ModelBatch(instancedShaderProvider);
 
@@ -514,7 +568,7 @@ class LodModel {
         Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
-        ((Buffer) offsets[fromIndex]).position(0);
+        //((Buffer) offsets[fromIndex]).position(0);
         modelBatch.begin(tmpCamera);
         modelBatch.render(renderable);
         modelBatch.end();
@@ -603,8 +657,10 @@ class LodModel {
 
         //OK, I'm not 100% sure what would be the best configuration for mipmaps and filters.
         //Feel free to experiment to find an optimal solution!
-        texture = new Texture(clippedPixmap, false);
-        texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        texture = new Texture(clippedPixmap, true);
+        //texture.setFilter(Texture.TextureFilter.MipMapNearestNearest, Texture.TextureFilter.Linear);
+        //texture = new Texture(clippedPixmap, false);
+        //texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
         fbo.end();
 
@@ -703,10 +759,11 @@ class LodModel {
 
 
         // Create offset FloatBuffer that will hold matrix4 and uv offset for each instance to pass to shader
-        offsets[decalIndex] = BufferUtils.newFloatBuffer(maxDecalInstances * DECAL_INSTANCE_DATA_SIZE); // 16 floats for mat4
+        offsets[decalIndex] = new LotsOfFloats(maxDecalInstances * DECAL_INSTANCE_DATA_SIZE); // 16 floats for mat4
+        //offsets[decalIndex] = BufferUtils.newFloatBuffer(maxDecalInstances * DECAL_INSTANCE_DATA_SIZE); // 16 floats for mat4
 
-        ((Buffer) offsets[decalIndex]).position(0);
-        mesh.setInstanceData(offsets[decalIndex]);
+        //((Buffer) offsets[decalIndex]).position(0);
+        //mesh.setInstanceData(offsets[decalIndex]);
 
         int indices = mesh.getNumIndices();
 
@@ -719,7 +776,8 @@ class LodModel {
         decalRenderable.shader = instancedShaderProvider.createDecalShader(decalRenderable);
         decalRenderable.shader.init();
         TextureAttribute attr = new TextureAttribute(TextureAttribute.Diffuse, texture);
-        decalRenderable.material = new Material(attr);
+        decalRenderable.material = blankMaterial;
+        //decalRenderable.material = new Material(attr);
 
         renderables[decalIndex] = decalRenderable;
     }
@@ -733,7 +791,7 @@ class LodModel {
         //that maximum on the fly. But for the demo I wanted a last-minute addition; dynamically adjusting
         //the LOD distances when running the demo. So, to make that possible, instead of capping the
         //instance count I set it to maximum (and then just typically using only some 20 - 30% of the capacity
-        mesh.enableInstancedRendering(true, maxDecalInstances,
+        mesh.enableInstancedRendering(true, maxModelInstances,
             new VertexAttribute(VertexAttributes.Usage.Generic, 3, "i_worldTrans"));
 
         /*
@@ -741,10 +799,11 @@ class LodModel {
             new VertexAttribute(VertexAttributes.Usage.Generic, 3, "i_worldTrans"));
          */
 
-        offsets[lodIndex] = BufferUtils.newFloatBuffer(maxModelInstances * 3); // 16 floats for mat4
+        offsets[lodIndex] = new LotsOfFloats(maxModelInstances * 3); // 16 floats for mat4
+        //offsets[lodIndex] = BufferUtils.newFloatBuffer(maxModelInstances * 3); // 16 floats for mat4
 
-        ((Buffer) offsets[lodIndex]).position(0);
-        mesh.setInstanceData(offsets[lodIndex]);
+        //((Buffer) offsets[lodIndex]).position(0);
+        //mesh.setInstanceData(offsets[lodIndex]);
 
         int indices = mesh.getNumIndices();
 
@@ -765,6 +824,59 @@ class LodModel {
         IntBuffer buffer = BufferUtils.newIntBuffer(16);
         Gdx.gl.glGetIntegerv(GL20.GL_MAX_TEXTURE_SIZE, buffer);
         return buffer.get(0);
+    }
+
+    /**
+     * A custom class to replace FloatBuffer
+     * Surely this could be optimized ?
+     */
+    private static class LotsOfFloats
+    {
+        public float[] data;
+        public int capacity;
+        public int position;
+
+        public LotsOfFloats(int capacity) {
+            this.capacity = capacity;
+            data = new float[capacity];
+        }
+
+        public void position(int newPos)
+        {
+            this.position = newPos;
+        }
+
+        public void put(float val)
+        {
+            data[position] = val;
+            position++;
+        }
+
+        public void put(float[] values)
+        {
+            for (float value : values) {
+                put(value);
+            }
+        }
+
+        /**
+         * Dynamically grow capacity, use with caution!
+         * @param newCapacity new capacity
+         */
+        public void grow(int newCapacity)
+        {
+            if (newCapacity <= capacity) return;
+            float[] newData = new float[newCapacity];
+            System.arraycopy(data, 0, newData, 0, data.length);
+            data = newData;
+            capacity = newCapacity;
+        }
+
+        public void clear()
+        {
+            position = 0;
+        }
+
     }
 
 }

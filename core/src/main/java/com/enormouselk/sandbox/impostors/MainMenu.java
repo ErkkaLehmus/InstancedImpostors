@@ -231,12 +231,15 @@ public class MainMenu implements Screen {
         window.add("Generating 3D, this might take a while.").row();
         window.add("Or this might crash, if there is not enough memory.").row();
         window.add("Let's hope for the best!").row();
+        window.pack();
+        window.centerWindow();
     }
 
     public void addMessage(String message)
     {
         window.add(message).row();
         window.pack();
+        window.centerWindow();
     }
 
     private int getMaxTextureSize () {

@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.utils.FirstPersonCameraController;
+import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.graphics.profiling.GLProfiler;
 import com.badlogic.gdx.math.Frustum;
 import com.badlogic.gdx.math.MathUtils;
@@ -32,6 +33,10 @@ public class DemoScreen implements Screen {
     private static final int LOD_MAX = 3;
     //a helper variable, we need this to draw stats
 
+    private static final String[] TREE_TITLES = {"FIR","PINE","BIRCH"};
+
+    private final String distanceTemplate = "%d m";
+    private final String percentTemplate = "%d %%";
 
     private boolean disableRendering;
 
@@ -45,6 +50,9 @@ public class DemoScreen implements Screen {
     private FirstPersonCameraController controller;
     private Frustum camFrustum;
     private long startTime, updateTime, renderTime;
+
+    private String cachedDecalDistance;
+    private String cachedDecalPercentDistance;
 
 
     private final LodModel[] lodModels = new LodModel[TREE_TYPES_MAX];
@@ -109,17 +117,17 @@ public class DemoScreen implements Screen {
         switch (counter) {
             case 0:
                 if (listener != null) listener.working("generating fir trees");
-                lodModels[TREE_TYPE_FIR] = new LodModel("graphics/fir", "FIR", LOD_MAX, treeTypeInstanceCount[TREE_TYPE_FIR], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
+                lodModels[TREE_TYPE_FIR] = new LodModel("graphics/fir", "FIR", LOD_MAX, true,treeTypeInstanceCount[TREE_TYPE_FIR], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
                 break;
 
             case 1:
                 if (listener != null) listener.working("generating pine trees");
-                lodModels[TREE_TYPE_PINE] = new LodModel("graphics/pine", "PINE", LOD_MAX, treeTypeInstanceCount[TREE_TYPE_PINE], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
+                lodModels[TREE_TYPE_PINE] = new LodModel("graphics/pine", "PINE", LOD_MAX, true,treeTypeInstanceCount[TREE_TYPE_PINE], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
                 break;
 
             case 2:
                 if (listener != null) listener.working("generating birch trees");
-                lodModels[TREE_TYPE_BIRCH] = new LodModel("graphics/birch", "BIRCH", LOD_MAX, treeTypeInstanceCount[TREE_TYPE_BIRCH], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
+                lodModels[TREE_TYPE_BIRCH] = new LodModel("graphics/birch", "BIRCH", LOD_MAX, false, treeTypeInstanceCount[TREE_TYPE_BIRCH], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
                 break;
             default:
                 if (listener != null) listener.finished();
@@ -130,6 +138,8 @@ public class DemoScreen implements Screen {
 
     public void startDemo()
     {
+        cacheDecalDistanceAsString();
+        cacheDecalDistanceAsPercentString();
         disableRendering = false;
     }
 
@@ -139,6 +149,9 @@ public class DemoScreen implements Screen {
         for (int i = 0; i < LOD_MAX; i++) {
             lodModels[i].initLodDistances(decalDistance * maxDistance);
             lodModels[i].reallocBuffers(decalDistance);
+
+            cacheDecalDistanceAsPercentString();
+            cacheDecalDistanceAsString();
         }
     }
 
@@ -178,19 +191,44 @@ public class DemoScreen implements Screen {
         }
     }
 
+    private void cacheDecalDistanceAsPercentString()
+    {
+        cachedDecalPercentDistance = String.format(percentTemplate, (int)decalDistance * 100);
+        //return ((int)decalDistance * 100)+" %";
+    }
+
+    private void cacheDecalDistanceAsString()
+    {
+        int dist = (int)lodModels[0].getDecalDistance();
+        if (dist < 0) cachedDecalDistance = "disabled";
+        cachedDecalDistance =  String.format(distanceTemplate, (int)dist);
+        //return ((int)decalDistance * 100)+" %";
+    }
+
+    private String getDecalDistanceAsPercentString()
+    {
+       return cachedDecalPercentDistance;
+    }
+
+    private String getDecalDistanceAsString()
+    {
+        return cachedDecalDistance;
+    }
+
     private void drawStats() {
         font.draw(batch2D,"Q W E A S D + mouse drag: move camera" ,10,Gdx.graphics.getHeight()- 32);
         font.draw(batch2D,"Z X : adjust LOD distances" ,10,Gdx.graphics.getHeight()- 32-32);
         font.draw(batch2D,"HOME : reset camera" ,10,Gdx.graphics.getHeight()- 32 - 64);
         font.draw(batch2D,"ESC : quit to main menu" ,10,Gdx.graphics.getHeight()- 32 - 96);
 
-        font.draw(batch2D,"DECAL DISTANCE : " + String.format("%.1f", decalDistance) +" = " +lodModels[0].getDecalDistance() , 10, 192);
+        font.draw(batch2D,"DECAL DISTANCE : " + getDecalDistanceAsPercentString() +" = " +getDecalDistanceAsString(), 10, 192);
         for (int ii = 0; ii < 3; ii++) {
             lodModel = lodModels[ii];
+            font.draw(batch2D,TREE_TITLES[ii],10, 80+ii*32);
             for (int i = 0; i < LOD_MAX; i++) {
-                font.draw(batch2D,"LOD"+i+": " + lodModel.lodCount[i] , 10 + (i*220), 80+ii*32);
+                font.draw(batch2D, "LOD"+i+": " + lodModel.lodCount[i] , 140 + (i*220), 80+ii*32);
             }
-            font.draw(batch2D,"DECALS: " + lodModel.decalCount , 10 + (LOD_MAX*220), 80+ii*32);
+            font.draw(batch2D,"DECALS: " + lodModel.decalCount , 140 + (LOD_MAX*220), 80+ii*32);
         }
 
         font.draw(batch2D,"Update Time: " + TimeUtils.nanosToMillis(updateTime) + "ms   Render Time: " + TimeUtils.nanosToMillis(renderTime) + "ms", 10, 232);
@@ -384,6 +422,7 @@ public class DemoScreen implements Screen {
 
         font.dispose();
         batch.dispose();
+
         batch2D.dispose();
 
         for (int i = 0; i < 3; i++) {

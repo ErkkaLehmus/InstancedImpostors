@@ -52,29 +52,8 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
         mainMenu.clear();
         if (demoScreen == null) demoScreen = new DemoScreen(ImpostorDemo.this);
 
-        Gdx.app.postRunnable(new Runnable() {
-            @Override
-            public void run() {
-                demoScreen.initGraphics(ImpostorDemo.this,(int)worldSize,(int)treeDensity,decalDistance,textureSize);
-                handleDemoMessages = true;
-            }
-        });
-
-
-        /*
-        //start the demo after a while, so that the mainmenu has time to clear itself
-        Timer.schedule(new Timer.Task() {
-            @Override
-            public void run() {
-                if (demoScreen == null) demoScreen = new DemoScreen(ImpostorDemo.this);
-                demoScreen.initGraphics(this,(int)worldSize,(int)treeDensity,decalDistance,textureSize);
-                setScreen(demoScreen);
-            }
-        },0.25f);
-
-         */
-
-
+        demoScreen.initGraphics(ImpostorDemo.this,(int)worldSize,(int)treeDensity,decalDistance,textureSize);
+        handleDemoMessages = true;
     }
 
     @Override
@@ -94,8 +73,14 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
         if (mainMenu == null) mainMenu = new MainMenu(this);
         setScreen(mainMenu);
 
-        demoScreen.dispose();
-        demoScreen=null;
+        Gdx.app.postRunnable(new Runnable() {
+            @Override
+            public void run() {
+                demoScreen.dispose();
+                demoScreen=null;
+            }
+        });
+
 
     }
 }
