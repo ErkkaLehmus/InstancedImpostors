@@ -193,7 +193,7 @@ public class DemoScreen implements Screen {
 
     private void cacheDecalDistanceAsPercentString()
     {
-        cachedDecalPercentDistance = String.format(percentTemplate, (int)decalDistance * 100);
+        cachedDecalPercentDistance = String.format(percentTemplate, (int)(decalDistance * 100));
         //return ((int)decalDistance * 100)+" %";
     }
 
