@@ -3,6 +3,7 @@ package com.enormouselk.sandbox.impostors;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.GL30;
+import com.badlogic.gdx.graphics.GL32;
 import com.badlogic.gdx.graphics.g3d.Attribute;
 import com.badlogic.gdx.graphics.g3d.Renderable;
 import com.badlogic.gdx.graphics.g3d.Shader;
@@ -52,6 +53,10 @@ public class InstancedShaderProvider extends DefaultShaderProvider {
     @Override
     public void dispose() {
         super.dispose();
+
+        ShaderProgram.prependVertexCode = "";
+        ShaderProgram.prependFragmentCode = "";
+
         //if (snowShader != null) snowShader.dispose();
     }
 
@@ -67,7 +72,8 @@ public class InstancedShaderProvider extends DefaultShaderProvider {
             public void begin(Camera camera, RenderContext context) {
                 program.bind();
                 program.setUniformMatrix("u_projViewTrans", camera.combined);
-                context.setDepthTest(GL30.GL_LEQUAL);
+                context.setDepthTest(GL32.GL_LESS);
+                //context.setDepthTest(GL30.GL_LEQUAL);
 
                 ColorAttribute ambientLight = (ColorAttribute) renderable.environment.get(ColorAttribute.AmbientLight);
                 DirectionalLightsAttribute dirLights = (DirectionalLightsAttribute) renderable.environment.get(DirectionalLightsAttribute.Type);

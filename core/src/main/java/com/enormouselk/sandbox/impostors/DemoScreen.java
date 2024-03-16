@@ -13,12 +13,12 @@ import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.utils.FirstPersonCameraController;
-import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.graphics.profiling.GLProfiler;
 import com.badlogic.gdx.math.Frustum;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.TimeUtils;
 
@@ -81,6 +81,8 @@ public class DemoScreen implements Screen {
     private final int[] treeTypeInstanceCount = new int[TREE_TYPES_MAX];
     //and yet another array to store the amount of each tree type
 
+    private Array<LodModel.LodSettings> lodSettings;
+
 
     private final ImpostorDemo owner;
 
@@ -89,9 +91,16 @@ public class DemoScreen implements Screen {
         this.owner = owner;
     }
 
-    public void initGraphics(DemoEventListener listener, int worldSize, int treeDensity, float decalDistance, int textureSize)
+    public void initGraphics(DemoEventListener listener, Array<LodModel.LodSettings> lodSettings, int worldSize, int treeDensity, float decalDistance, int textureSize)
     {
         if (listener != null) listener.working("initializing...");
+
+        this.lodSettings = new Array<>(lodSettings);
+
+        Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
+        Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
+        Gdx.gl32.glCullFace(GL32.GL_BACK);
+
         disableRendering = true;
         tilesX = worldSize;
         tilesY = worldSize;
@@ -114,6 +123,15 @@ public class DemoScreen implements Screen {
 
     public void initLOD(DemoEventListener listener)
     {
+        if (counter < lodSettings.size)
+        {
+            LodModel.LodSettings s = lodSettings.get(counter);
+            if (listener != null) listener.working("generating "+s.ID);
+            lodModels[counter] = new LodModel(s,treeTypeInstanceCount[TREE_TYPE_FIR], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
+        }
+        else if (listener != null) listener.finished();
+
+        /*
         switch (counter) {
             case 0:
                 if (listener != null) listener.working("generating fir trees");
@@ -133,6 +151,8 @@ public class DemoScreen implements Screen {
                 if (listener != null) listener.finished();
                 break;
         }
+
+         */
         counter++;
     }
 
@@ -165,30 +185,34 @@ public class DemoScreen implements Screen {
         profiler.reset();
 
         controller.update();
+        Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
+        Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
+        Gdx.gl32.glCullFace(GL32.GL_BACK);
+        Gdx.gl32.glDisable(GL32.GL_BLEND);
         ScreenUtils.clear(Color.SKY, true);
         checkUserInput();
 
-        if (!disableRendering) {
+        if (disableRendering) return;
 
-            startTime = TimeUtils.nanoTime();
-            updateInstancedData();
-            updateTime = TimeUtils.timeSinceNanos(startTime);
+        startTime = TimeUtils.nanoTime();
+        updateInstancedData();
+        updateTime = TimeUtils.timeSinceNanos(startTime);
 
-            startTime = TimeUtils.nanoTime();
-            batch.begin(camera);
+        startTime = TimeUtils.nanoTime();
+        batch.begin(camera);
 
-            for (int ii = 0; ii < TREE_TYPES_MAX; ii++) {
-                lodModels[ii].render(batch);
-                batch.flush();
-            }
-            batch.end();
-            renderTime = TimeUtils.timeSinceNanos(startTime);
-
-            // 2D HUD to show stats
-            batch2D.begin();
-            drawStats();
-            batch2D.end();
+        for (int ii = 0; ii < TREE_TYPES_MAX; ii++) {
+            lodModels[ii].render(batch);
+            batch.flush();
         }
+        batch.end();
+        renderTime = TimeUtils.timeSinceNanos(startTime);
+
+        // 2D HUD to show stats
+        batch2D.begin();
+        drawStats();
+        batch2D.end();
+
     }
 
     private void cacheDecalDistanceAsPercentString()
@@ -388,9 +412,6 @@ public class DemoScreen implements Screen {
         controller.setVelocity(tileSize*6);
         controller.setDegreesPerPixel(1f);
         Gdx.input.setInputProcessor(controller);
-
-        Gdx.gl30.glEnable(GL32.GL_CULL_FACE);
-        Gdx.gl30.glCullFace(GL32.GL_BACK);
 
         //create & enable the profiler
         profiler = new GLProfiler(Gdx.graphics);

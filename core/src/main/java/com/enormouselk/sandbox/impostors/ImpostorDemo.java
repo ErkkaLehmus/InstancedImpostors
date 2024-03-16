@@ -2,6 +2,7 @@ package com.enormouselk.sandbox.impostors;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Timer;
 
 /** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
@@ -47,12 +48,12 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
        if (mainMenu != null) mainMenu.dispose();
     }
 
-    public void startDemo(float worldSize,float treeDensity,float decalDistance, int textureSize)
+    public void startDemo(Array<LodModel.LodSettings> settings, float worldSize, float treeDensity, float decalDistance, int textureSize)
     {
         mainMenu.clear();
         if (demoScreen == null) demoScreen = new DemoScreen(ImpostorDemo.this);
 
-        demoScreen.initGraphics(ImpostorDemo.this,(int)worldSize,(int)treeDensity,decalDistance,textureSize);
+        demoScreen.initGraphics(ImpostorDemo.this,settings,  (int)worldSize,(int)treeDensity,decalDistance,textureSize);
         handleDemoMessages = true;
     }
 
@@ -60,6 +61,8 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
     public void finished() {
         handleDemoMessages = false;
         setScreen(demoScreen);
+        mainMenu.dispose();
+        mainMenu = null;
         demoScreen.startDemo();
     }
 
@@ -70,9 +73,12 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
 
     public void stopDemo()
     {
+        demoScreen.dispose();
+        demoScreen = null;
         if (mainMenu == null) mainMenu = new MainMenu(this);
         setScreen(mainMenu);
 
+        /*
         Gdx.app.postRunnable(new Runnable() {
             @Override
             public void run() {
@@ -80,6 +86,8 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
                 demoScreen=null;
             }
         });
+
+         */
 
 
     }

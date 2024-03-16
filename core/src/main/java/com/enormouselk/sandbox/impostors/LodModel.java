@@ -15,11 +15,12 @@ package com.enormouselk.sandbox.impostors;
 import static com.badlogic.gdx.math.MathUtils.HALF_PI;
 import static com.badlogic.gdx.math.MathUtils.cosDeg;
 import static com.badlogic.gdx.math.MathUtils.round;
+import static com.badlogic.gdx.math.MathUtils.sinDeg;
 import static java.lang.Math.pow;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.GL32;
 import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.Pixmap;
@@ -46,10 +47,7 @@ import net.mgsx.gltf.loaders.glb.GLBLoader;
 import net.mgsx.gltf.scene3d.scene.SceneAsset;
 import net.mgsx.gltf.scene3d.scene.SceneModel;
 
-//import java.nio.Buffer;
-//import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-//import java.util.Arrays;
 
 class LodModel {
 
@@ -58,14 +56,7 @@ class LodModel {
     //if debugFilePath is not null, png files of generated impostors will be saved at the given folder
 
     private float textureSize;
-    private final float decalCameraDistance = 80;
-    //the above 2 values affect the quality of decals
-    //the higher the texureSize the better the image quality
-    //the smaller the camera distance the better the image quality
-    //your model size determines what camera distance you can use,
-    //the taller the models the further away the camera needs to be.
-    //currently trial and error is the only way to find out the optimal values to use
-    //so a possible future improvement would be to write an algorithm to estimate the values
+    private final float decalCameraDistance = 100;
 
 
     public static final int DECAL_INSTANCE_DATA_SIZE = 18;
@@ -131,30 +122,28 @@ class LodModel {
 
     /**
      * Construct a 3D model with different LOD levels and an 2D impostor. The demo doesn't support glb but has a minimal shader using vertex colors and normals.
-     * @param filename currently expecting .glb files named as mymodel-lod0.glb, mymodel-lod1.glb, mymodel-lod2.glb, IMPORTANT: for the parameter value give only "mymodel", that will be used as a basis to generate the actual filenames to load from
-     * @param ID an optional string to identify this model. Currently this does nothing.
-     * @param lodMax 3. This is groundwork for making the number of lod levels customizable for each models. But the demo just assumed 3 for each model.
+     * @param settings filename and other such settings
      * @param maxInstances maximum amount if instances that can be displayed at once
      * @param decalDistance in range 0.0 - 1.0
      * @param maxDistance to determine the actual thresholds for each lod level. This would be either camera.far or the world size. If decalDistance is 0.5 and maxDistance is 1000, models will be displayed as decals (impostors) at 500m and further
      * @param environment environment
      * @param shaderProvider shaderProvider
      */
-    public LodModel(String filename, String ID, int lodMax, boolean generateImpostor, int maxInstances, float decalDistance, float maxDistance, int textureSize, Environment environment, InstancedShaderProvider shaderProvider) {
-        this.ID = ID;
+    public LodModel(LodSettings settings, int maxInstances, float decalDistance, float maxDistance, int textureSize, Environment environment, InstancedShaderProvider shaderProvider) {
+        this.ID = settings.ID;
         this.instancedShaderProvider = shaderProvider;
-        LOD_MAX = lodMax;
+        LOD_MAX = settings.lodMax;
 
-        this.hasDecal = generateImpostor;
-        if (generateImpostor) {
+        this.hasDecal = settings.generateImpostor;
+        if (hasDecal) {
             decalIndex = LOD_MAX;
             int maxTextureSize = getMaxTextureSize();
             if (textureSize > maxTextureSize) textureSize = maxTextureSize;
             this.textureSize = textureSize;
             this.maxDecalInstances = maxInstances;
-            maxModelInstances = maxInstances;
+            //maxModelInstances = maxInstances;
             //below is what I'd actually like to have, but that will need more testing to ensure it works reliably
-            //maxModelInstances = MathUtils.ceilPositive(maxInstances * decalDistance);
+            maxModelInstances = MathUtils.ceilPositive(maxInstances * decalDistance);
         }
         else {
             decalIndex = -1;
@@ -172,7 +161,7 @@ class LodModel {
         q = new Quaternion();
         mat4 = new Matrix4();
         renderables = new Renderable[LOD_MAX + 1];
-        setupInstancedMeshes(filename,environment);
+        setupInstancedMeshes(settings.filename,environment);
     }
 
     public void dispose() {
@@ -216,6 +205,10 @@ class LodModel {
         {
             for (int i = 0; i < decalIndex; i++) {
                 offsets[i].grow(maxModelInstances * 3);
+
+                renderables[i].meshPart.mesh.disableInstancedRendering();
+                renderables[i].meshPart.mesh.enableInstancedRendering(true,maxModelInstances,new VertexAttribute(VertexAttributes.Usage.Generic, 3, "i_worldTrans"));
+
                 //offsets[i] = new LotsOfFloats(maxModelInstances * 3); // 16 floats for mat4
             }
         }
@@ -301,10 +294,10 @@ class LodModel {
 
 
             // put the 16 floats for mat4 in the float buffer
-            offsets[decalIndex].put(mat4.getValues());
+            offsets[decalIndex].safePut(mat4.getValues());
 
             //store the v offset for uv offset
-            offsets[decalIndex].put(tmpFloat);
+            offsets[decalIndex].safePut(tmpFloat);
 
             //then we compute the u offset based on the camera angle
             angleTemp = MathUtils.atan2Deg360(cameraPosition.z-instancePosition.z,cameraPosition.x - instancePosition.x);
@@ -312,7 +305,7 @@ class LodModel {
             tmpStepY = round((angleTemp) / angleXStep);
             if (tmpStepY >= stepsY) tmpStepY = stepsY-1;
             tmpFloat =  tmpStepY * uvHeight;
-            offsets[LOD_MAX].put(tmpFloat);
+            offsets[LOD_MAX].safePut(tmpFloat);
 
             decalCount++;
 
@@ -320,9 +313,14 @@ class LodModel {
         else
         {
             //use the chosen LOD
+
+            offsets[lodTemp].safePut(instancePosition);
+            /*
             offsets[lodTemp].put(instancePosition.x);
             offsets[lodTemp].put(instancePosition.y);
             offsets[lodTemp].put(instancePosition.z);
+
+             */
             lodCount[lodTemp]++;
         }
     }
@@ -365,6 +363,7 @@ class LodModel {
         for (int i = 0; i < LOD_MAX ; i++) {
             if (lodCount[i] > 0)
             {
+
                 renderables[i].meshPart.mesh.setInstanceData(offsets[i].data,0, offsets[i].position);
                 /*
                 ((Buffer) offsets[i]).position(0);
@@ -411,7 +410,7 @@ class LodModel {
         Mesh lod2 = loadFromGLB(modelFile + "-lod2.glb");
         setupInstancedMesh(lod2, 2, environment);
 
-        if (hasDecal) setupInstancedDecals(2);
+        if (hasDecal) setupInstancedDecals(0);
     }
 
     private Mesh loadFromGLB(String filename) {
@@ -508,14 +507,93 @@ class LodModel {
     //a helper function to take a snapshot of the renderable, and clip the image to the pixmap
     private void clipDecal(ModelBatch modelBatch, Camera tmpCamera, Renderable renderable, Pixmap fboPixmap, Pixmap clippedPixmap, int cropX, int cropY, int pxWidth, int pxHeight, int offsetX, int offsetY) {
         Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+        Gdx.gl.glClear(GL32.GL_COLOR_BUFFER_BIT | GL32.GL_DEPTH_BUFFER_BIT);
 
         modelBatch.begin(tmpCamera);
         modelBatch.render(renderable);
         modelBatch.end();
 
+        //renderable.shader.begin(tmpCamera,context);
+        //renderable.shader.render(renderable);
+        //renderable.shader.end();
+
         fboPixmap = Pixmap.createFromFrameBuffer(0, 0, fboPixmap.getWidth(), fboPixmap.getHeight());
         clippedPixmap.drawPixmap(fboPixmap, offsetX, offsetY, cropX, cropY, pxWidth, pxHeight);
+    }
+
+
+    /**
+     * This is more or less experimental code, trying to get an optimal camera distance
+     * to look at the model so that it would have desired pixel height
+     * @param camera to look from
+     * @param modelHeight model height in world units
+     * @param pxHeight desired height in pixels
+     * @return optimal camera distance in world units
+     */
+    private float getOptimalCameraDistance(Camera camera, float modelHeight,int pxHeight)
+    {
+        Vector3 camPos = new Vector3(0, 0, decalCameraDistance);
+        Quaternion quaternion = new Quaternion();
+        quaternion.setEulerAngles(270, -30, 0);
+
+        camPos.mul(quaternion);
+
+        camera.position.set(camPos);
+        camera.up.set(Vector3.Y);
+
+        camera.lookAt(0,0,0);
+        camera.update();
+
+        float horizon = camera.viewportHeight / 2;
+        float ret = decalCameraDistance;
+        Vector3 work = new Vector3(0,modelHeight,0);
+        work = camera.project(work,0,0,camera.viewportWidth,camera.viewportHeight);
+        float computedHeight = work.y-horizon;
+
+        int safetyCounter = 0;
+
+        while ((computedHeight < pxHeight-2) || (computedHeight > pxHeight))
+        {
+            if (safetyCounter > 256) {
+                //panic!
+                ret = 100f;
+                break;
+            }
+
+            float adjust = (computedHeight / pxHeight);
+
+            ret = ret * adjust;
+            work.set(0,modelHeight,0);
+            safetyCounter++;
+
+            camPos.set(0, 0, ret);
+            //Quaternion quaternion = new Quaternion();
+            quaternion.setEulerAngles(270, -30, 0);
+
+            camPos.mul(quaternion);
+
+            camera.position.set(camPos);
+            camera.up.set(Vector3.Y);
+
+            camera.lookAt(0,0,0);
+            camera.update();
+
+
+            /*
+            camera.position.set(0,ret/2,-ret);
+            camera.lookAt(0,0,0);
+            camera.up.set(Vector3.Y);
+            camera.update();
+
+             */
+
+            work = camera.project(work,0,0,camera.viewportWidth,camera.viewportHeight);
+            computedHeight = work.y - horizon;
+        }
+
+        if (ret < 1) ret = 100;
+        return ret;
+        //float initialDistance = modelHeight / MathUtils.tanDeg(30);
     }
 
     /**
@@ -527,57 +605,65 @@ class LodModel {
      */
     private void setupInstancedDecals(int fromIndex) {
 
-        int fboWidth = (int) textureSize;
-        //int fboHeight = round((float) Gdx.graphics.getHeight() / Gdx.graphics.getWidth() * textureSize);
-        int fboHeight = (int) (textureSize / 16f * 9f);
-
-        int offsetX = 0;
-        int offsetY = 0;
-
-        float camDistance = decalCameraDistance;
-
-        //we start by looking at the model from the camera distance, at 15 degrees elevation angle
-        PerspectiveCamera tmpCamera = new PerspectiveCamera(67, fboWidth, fboHeight);
-        tmpCamera.near = 0.1f;
-        tmpCamera.far = decalCameraDistance*2;
-        tmpCamera.position.set(0, camDistance / 4, camDistance);
-        tmpCamera.up.set(Vector3.Y);
-        tmpCamera.lookAt(0, 0, 0);
-        tmpCamera.update();
 
         Vector3 instanceLocation = new Vector3(0, 0, 0);
         Renderable renderable = renderables[fromIndex];
 
+        //I think we need to set the fbo aspect ratio according to the screen aspect ratio
+        //but there is probably something I just don't fully understand.
+        int fboWidth = (int) textureSize;
+        //int fboHeight = (int) textureSize;
+        int fboHeight = round((float) Gdx.graphics.getHeight() / Gdx.graphics.getWidth() * textureSize);
+        //int fboHeight = (int) (textureSize / 16f * 9f);
+
+        int offsetX = 0;
+        int offsetY = 0;
+
+        PerspectiveCamera tmpCamera = new PerspectiveCamera(67, fboWidth, fboHeight);
+        tmpCamera.near = 1f;
+        tmpCamera.far = decalCameraDistance*4;
+
+        //let's try some heuristics to get a camera distance to yield an image of desired height in pixels
+        float camDistance = getOptimalCameraDistance(tmpCamera,radius, (int) (textureSize / 8) - 2);
+
+        //we look at the model from the given distance
+        //having camera at 30 degrees elevation angle
+        Vector3 camPos = new Vector3(0, 0, camDistance);
+        Quaternion quaternion = new Quaternion();
+        quaternion.setEulerAngles(270, -30, 0);
+        camPos.mul(quaternion);
+        tmpCamera.position.set(camPos);
+        tmpCamera.up.set(Vector3.Y);
+
+        tmpCamera.lookAt(instanceLocation);
+        tmpCamera.update();
+
+        //we place one instance of the model, at world position 0,0,0
         offsets[fromIndex].position(0);
-        //((Buffer) offsets[fromIndex]).position(0);
-
-        offsets[fromIndex].put(0);
-        offsets[fromIndex].put(0);
-        offsets[fromIndex].put(0);
-
-        //((Buffer) offsets[fromIndex]).position(0);
-
+        offsets[fromIndex].put(0,0,0);
         renderable.meshPart.mesh.setInstanceData(offsets[fromIndex].data,0, 3);
-        //renderable.meshPart.mesh.setInstanceData(offsets[fromIndex], 3);
+
 
         ModelBatch modelBatch = new ModelBatch(instancedShaderProvider);
-
         FrameBuffer fbo = new FrameBuffer(Pixmap.Format.RGBA8888, fboWidth, fboHeight, true);
         fbo.begin();
 
-        Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+        Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
+        Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
+        Gdx.gl32.glCullFace(GL32.GL_BACK);
+        Gdx.gl32.glDisable(GL32.GL_BLEND);
 
-        //((Buffer) offsets[fromIndex]).position(0);
+        Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
+        Gdx.gl.glClear(GL32.GL_COLOR_BUFFER_BIT | GL32.GL_DEPTH_BUFFER_BIT);
+
         modelBatch.begin(tmpCamera);
         modelBatch.render(renderable);
         modelBatch.end();
 
-
         Pixmap fboPixmap = Pixmap.createFromFrameBuffer(0, 0, fboWidth, fboHeight);
 
         if (debugFilePath != null) {
-            PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("fbo.png"), fboPixmap);
+            PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("fbo.png"), fboPixmap,0,false);
         }
 
         int cropX = getFirstLine(fboPixmap, false, fboWidth / 2, false, -1);
@@ -588,8 +674,11 @@ class LodModel {
         int pxWidth = cropX2 - cropX;
         int pxHeight = cropY2 - cropY;
 
+        System.out.println("height "+pxHeight+" cam distance="+camDistance);
+
         uvWidth = (float) pxWidth / textureSize;
         uvHeight = (float) pxHeight / textureSize;
+
 
         //For the demo we generate images of the model seen from E,NE,N,NW,W,SW,S,SE - that makes 8 different camera angles
         //this, I think is the minimum, and since I had trouble fitting all the images on a 1024 x 1024 texture,
@@ -613,14 +702,16 @@ class LodModel {
         for (int dir = 0; dir < stepsY; dir++) {
 
             offsetX = 0;
-            float angleY = 15;
+            float angleY = 30;
             for (int i = 0; i < stepsX; i++) {
 
-                float cose = cosDeg(angleY);
+                float sine = sinDeg(angleY-30);
+                //float cose = cosDeg(angleY+30);
 
-                Vector3 camPos = new Vector3(0, 0, camDistance);
-                Quaternion quaternion = new Quaternion();
-                quaternion.setEulerAngles(angleX, angleY, 0);
+                camPos.set(0,0,camDistance);
+                //Vector3 camPos = new Vector3(0, 0, camDistance);
+                //Quaternion quaternion = new Quaternion();
+                quaternion.setEulerAngles(angleX, -angleY, 0);
 
                 camPos.mul(quaternion);
 
@@ -633,11 +724,12 @@ class LodModel {
                 //when the camera is taken higher, we need to gently adjust the image position,
                 //otherwise when seen from directly above we would only see a northern half of the model
                 //and the rest being cut out.
-                int dropY = round(cose * pxWidth - pxWidth);
+                int dropY = -round(sine * pxWidth / 2);
 
                 //after the camera has been rotated we take a snapshot and store it in the pixmap
                 clipDecal(modelBatch, tmpCamera, renderable, fboPixmap, clippedPixmap, cropX, cropY + dropY, pxWidth, pxHeight, offsetX, offsetY - (dropY));
-                if (angleY == 15) angleY = 30;
+
+                //if (angleY == 15) angleY = 30;
                 angleY += angleYStep;
                 offsetX += pxWidth;
             }
@@ -650,7 +742,7 @@ class LodModel {
         //if we have the path, we store the generated pixmap there
         if (debugFilePath != null) {
             String saveName = "test_" + ID + ".png";
-            PixmapIO.writePNG(Gdx.files.external(debugFilePath).child(saveName), clippedPixmap);
+            PixmapIO.writePNG(Gdx.files.external(debugFilePath).child(saveName), clippedPixmap,0,false);
         }
 
         fboPixmap.dispose();
@@ -670,10 +762,7 @@ class LodModel {
 
         stepsX--;
 
-
-        //OK, we now have our texture, then we move on to generate the actual decal
-
-
+        //Good good! We now have our texture, then we move on to generate the actual decal
         final int VERTEX_SIZE = 3 + 2;
         //3 floats for xyz position, 2 floats for UV coordinates
         final int SIZE = 4 * VERTEX_SIZE;
@@ -692,9 +781,7 @@ class LodModel {
             new VertexAttribute(VertexAttributes.Usage.Position, 3, "a_position"),
             new VertexAttribute(VertexAttributes.Usage.TextureCoordinates, 2, "a_texCoords0")
         );
-
         //and just like that, now we have a flat decal, we will use it as a billboard to make an impostor, yay!
-
 
         //we need to know the world size of the actual model
         BoundingBox boundingBox = new BoundingBox();
@@ -770,7 +857,7 @@ class LodModel {
 
         //finally, we can make a renderable out of our instanced mesh!
         Renderable decalRenderable = new Renderable();
-        decalRenderable.meshPart.set("DECAL", mesh, 0, indices, GL20.GL_TRIANGLES);
+        decalRenderable.meshPart.set("DECAL", mesh, 0, indices, GL32.GL_TRIANGLES);
         decalRenderable.environment = renderable.environment;
         decalRenderable.worldTransform.idt();
         decalRenderable.shader = instancedShaderProvider.createDecalShader(decalRenderable);
@@ -808,7 +895,7 @@ class LodModel {
         int indices = mesh.getNumIndices();
 
         Renderable renderable = new Renderable();
-        renderable.meshPart.set("Tree", mesh, 0, indices, GL20.GL_TRIANGLES);
+        renderable.meshPart.set("Tree", mesh, 0, indices, GL32.GL_TRIANGLES);
         renderable.environment = environment;
         renderable.worldTransform.idt();
         renderable.shader = instancedShaderProvider.createShader(renderable);
@@ -822,7 +909,7 @@ class LodModel {
 
     private static int getMaxTextureSize () {
         IntBuffer buffer = BufferUtils.newIntBuffer(16);
-        Gdx.gl.glGetIntegerv(GL20.GL_MAX_TEXTURE_SIZE, buffer);
+        Gdx.gl.glGetIntegerv(GL32.GL_MAX_TEXTURE_SIZE, buffer);
         return buffer.get(0);
     }
 
@@ -852,6 +939,13 @@ class LodModel {
             position++;
         }
 
+        public void put(float val1,float val2,float val3)
+        {
+            put(val1);
+            put(val2);
+            put(val3);
+        }
+
         public void put(float[] values)
         {
             for (float value : values) {
@@ -859,8 +953,57 @@ class LodModel {
             }
         }
 
+        public void safePut(float val)
+        {
+            if (position >= capacity)
+            {
+                grow(round(capacity * 1.25f));
+            }
+            data[position] = val;
+            position++;
+        }
+
+        public void safePut(float val1,float val2,float val3)
+        {
+            if (position+3 >= capacity)
+            {
+                grow(round(capacity * 1.25f));
+            }
+            data[position] = val1;
+            position++;
+            data[position] = val2;
+            position++;
+            data[position] = val3;
+            position++;
+        }
+
+        public void safePut(Vector3 values)
+        {
+            if (position+3 >= capacity)
+            {
+                grow(round(capacity * 1.25f));
+            }
+            data[position] = values.x;
+            position++;
+            data[position] = values.y;
+            position++;
+            data[position] = values.z;
+            position++;
+        }
+
+        public void safePut(float[] values)
+        {
+            if (position+values.length >= capacity)
+            {
+                grow(round(capacity * 1.25f));
+            }
+            for (float value : values) {
+                put(value);
+            }
+        }
+
         /**
-         * Dynamically grow capacity, use with caution!
+         * Dynamically grow capacity, keeping current content.
          * @param newCapacity new capacity
          */
         public void grow(int newCapacity)
@@ -872,11 +1015,48 @@ class LodModel {
             capacity = newCapacity;
         }
 
+        /**
+         * Grow capacity, destroying content
+         * Use only for an empty container!
+         * @param newCapacity new capacity
+         */
+        public void setCapacity(int newCapacity)
+        {
+            if (newCapacity <= capacity) return;
+            data = new float[newCapacity];
+            capacity = newCapacity;
+            position = 0;
+        }
+
         public void clear()
         {
             position = 0;
         }
 
     }
+
+    public static class LodSettings
+    {
+        public static final int SHADERTYPE_MINIMAL = 0;
+        public static final int SHADERTYPE_DEFAULT = 1;
+        public static final int SHADERTYPE_PBR = 2;
+
+        String filename;
+        String ID;
+        int lodMax;
+        boolean generateImpostor;
+        int shaderType;
+        boolean external;
+
+        public LodSettings(String filename, String ID, int lodMax, boolean generateImpostor, int shaderType, boolean external) {
+            this.filename = filename;
+            this.ID = ID;
+            this.lodMax = lodMax;
+            this.generateImpostor = generateImpostor;
+            this.shaderType = shaderType;
+            this.external = external;
+        }
+    }
+
 
 }

@@ -2,8 +2,7 @@ package com.enormouselk.sandbox.impostors;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.graphics.GL32;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
@@ -53,18 +52,24 @@ public class MainMenu implements Screen {
     private VisLabel legendTreeDensity;
     private VisLabel legendWorldSize;
 
+    private Array<LodModel.LodSettings> lodSettings;
+
     public MainMenu(ImpostorDemo owner) {
         super();
         this.owner = owner;
-        init();
+
     }
 
     public void init()
     {
+
         // Check if for GL30 profile
         if (Gdx.gl30 == null) {
             throw new GdxRuntimeException("GLES 3.0 profile required for this test");
         }
+
+        lodSettings = new Array<>(3);
+        setDefaultModels();
 
         VisUI.setSkipGdxVersionCheck(true);
         VisUI.load(VisUI.SkinScale.X1);
@@ -88,7 +93,7 @@ public class MainMenu implements Screen {
         legendTreeDensity = new VisLabel(String.format(defaultLocale,densityTemplate,maxWorldSize*maxWorldSize * maxTreeDensity));
         //final VisLabel legendTreeDensity = new VisLabel("");
 
-        sliderImpostorDistance = new VisSlider(1,100,1,false);
+        sliderImpostorDistance = new VisSlider(10,100,10,false);
         sliderImpostorDistance.setValue(defaultImpostorDistance);
         legendImpostorDistance = new VisLabel(String.format(defaultLocale,distanceTemplate,defaultImpostorDistance));
 
@@ -139,14 +144,24 @@ public class MainMenu implements Screen {
         startButton.addListener(new ChangeListener() {
             @Override
             public void changed (ChangeEvent event, Actor actor) {
-                owner.startDemo(sliderWorldSize.getValue(), sliderTreeDensity.getValue(), sliderImpostorDistance.getValue() / 100f,selectTextureSize.getSelected());
+                owner.startDemo(lodSettings, sliderWorldSize.getValue(), sliderTreeDensity.getValue(), sliderImpostorDistance.getValue() / 100f,selectTextureSize.getSelected());
             }
         });
 
     }
 
+    private void setDefaultModels()
+    {
+        lodSettings.clear();
+        lodSettings.add(new LodModel.LodSettings("graphics/fir","FIR",3,true, LodModel.LodSettings.SHADERTYPE_MINIMAL,false));
+        lodSettings.add(new LodModel.LodSettings("graphics/pine","PINE",3,true, LodModel.LodSettings.SHADERTYPE_MINIMAL,false));
+        lodSettings.add(new LodModel.LodSettings("graphics/birch","BIRCH",3,true, LodModel.LodSettings.SHADERTYPE_MINIMAL,false));
+    }
+
     @Override
     public void show() {
+        init();
+
         Gdx.input.setInputProcessor(stage);
 
         window.clear();
@@ -192,7 +207,7 @@ public class MainMenu implements Screen {
     @Override
     public void render(float delta) {
         Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        Gdx.gl.glClear(GL32.GL_COLOR_BUFFER_BIT);
         stage.act(delta);
         //stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
         stage.draw();
@@ -215,13 +230,16 @@ public class MainMenu implements Screen {
 
     @Override
     public void hide() {
-
+        dispose();
     }
 
     @Override
     public void dispose() {
+        if (stage == null) return;
+
         VisUI.dispose();
         stage.dispose();
+        stage = null;
     }
 
     public void clear()
@@ -244,7 +262,7 @@ public class MainMenu implements Screen {
 
     private int getMaxTextureSize () {
         IntBuffer buffer = BufferUtils.newIntBuffer(16);
-        Gdx.gl.glGetIntegerv(GL20.GL_MAX_TEXTURE_SIZE, buffer);
+        Gdx.gl.glGetIntegerv(GL32.GL_MAX_TEXTURE_SIZE, buffer);
         int ret = buffer.get(0);
         return Math.min(ret,4096);
     }
