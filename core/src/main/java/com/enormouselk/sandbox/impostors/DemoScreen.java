@@ -69,9 +69,10 @@ public class DemoScreen implements Screen {
 
 
     private final int tileSize = 10;
-    private int tilesX;
-    private int tilesY;
-    private int treesPerTile;
+    private final int chunkSize = tileSize * 5;
+    private int chunksX;
+    private int chunksY;
+    private int treesPerChunk;
     private int treeCount;
 
     private int counter;
@@ -79,12 +80,17 @@ public class DemoScreen implements Screen {
     private int textureSize;
     private float maxDistance;
 
-    private Vector3[] treePositions;
-    //an array to hold the position for each and every tree
     private int[] treeTypes;
-    //another array to hold the type of each tree
-    private final int[] treeTypeInstanceCount = new int[TREE_TYPES_MAX];
+    //an array to hold the type of each tree
+
+
+    //private Vector3[] treePositions;
+    //an array to hold the position for each and every tree
+    //private final int[] treeTypeInstanceCount = new int[TREE_TYPES_MAX];
     //and yet another array to store the amount of each tree type
+
+    TreeChunk[][] world;
+
 
     private Array<LodSettings> lodSettings;
 
@@ -100,6 +106,9 @@ public class DemoScreen implements Screen {
     {
         if (listener != null) listener.working("initializing...");
 
+        maxDistance = worldSize * tileSize;
+        counter = 0;
+
         this.lodSettings = new Array<>(lodSettings);
 
         Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
@@ -107,24 +116,24 @@ public class DemoScreen implements Screen {
         Gdx.gl32.glCullFace(GL32.GL_BACK);
         Gdx.gl32.glDisable(GL32.GL_BLEND);
 
+
         disableRendering = true;
-        tilesX = worldSize;
-        tilesY = worldSize;
-        treesPerTile = treeDensity;
+        chunksX = (int) (maxDistance / chunkSize);
+        chunksY = chunksX;
+
+        int tilesPerChunk = chunkSize / tileSize;
+        treesPerChunk = treeDensity * tilesPerChunk * tilesPerChunk;
 
         this.textureSize = textureSize;
         this.decalDistance = decalDistance;
 
-        treeCount = tilesY * tilesX * treesPerTile;
+        treeCount = chunksX * chunksY * treesPerChunk;
 
-        treePositions = new Vector3[treeCount];
+        //treePositions = new Vector3[treeCount];
         treeTypes = new int[treeCount];
 
+        world = new TreeChunk[chunksX][chunksY];
         init();
-        createTreePositions();
-
-        maxDistance = worldSize * tileSize;
-        counter = 0;
     }
 
     public void initLOD(DemoEventListener listener)
@@ -145,6 +154,7 @@ public class DemoScreen implements Screen {
     {
         cacheDecalDistanceAsString();
         cacheDecalDistanceAsPercentString();
+        createWorld();
         disableRendering = false;
     }
 
@@ -183,6 +193,26 @@ public class DemoScreen implements Screen {
         batch.begin(camera);
 
         vec2Temp.set(camera.position.x,camera.position.z);
+
+        //very simple chunk-based approach to optimize speed
+        for (int x = 0; x < chunksX; x++) {
+            for (int y = 0; y < chunksY; y++) {
+                TreeChunk chunk = world[x][y];
+                if (camFrustum.boundsInFrustum(chunk.boundingBox))
+                {
+                    for (int i = 0; i < chunk.maxTrees; i++) {
+                        TreeChunk.TreeInstance tree = chunk.treeInstances[i];
+                        vec3Temp = tree.position;
+                        lodModel = lodModels[tree.type];
+                        lodModel.updateInstanceData(batch,camera.position,vec2Temp,vec3Temp);
+                    }
+                }
+            }
+
+        }
+
+        //this was the old naive system checking each and every tree
+        /*
         for (int i = 0; i < treeCount; i++) {
             vec3Temp = treePositions[i];
             lodModel = lodModels[treeTypes[i]];
@@ -190,6 +220,7 @@ public class DemoScreen implements Screen {
             if (camFrustum.sphereInFrustum(vec3Temp,lodModel.radius))
                 lodModel.updateInstanceData(batch,camera.position,vec2Temp,vec3Temp);
         }
+         */
 
         for (int ii = 0; ii < TREE_TYPES_MAX; ii++) {
             lodModels[ii].pushInstanceData();
@@ -303,7 +334,7 @@ public class DemoScreen implements Screen {
      * @param val range 0 - 100
      * @return an int referring to a tree type
      */
-    private int convertToTreeType(int val)
+    public static int convertToTreeType(int val)
     {
         if (val < 45) return TREE_TYPE_FIR;
         if (val < 80) return TREE_TYPE_PINE;
@@ -313,33 +344,47 @@ public class DemoScreen implements Screen {
 
     private float getSubPosition()
     {
-        return MathUtils.random((float)tileSize);
+        return MathUtils.random((float)chunkSize);
     }
 
-    private void createTreePositions(){
+    private void createWorld(){
         Noise noise = new Noise();
-        float worldSize = tilesX * tileSize;
+        float worldSizeHalf = chunksX * chunkSize / 2f;
 
-        int counter = 0;
         int tt;
 
-        //I'm old school, I like to explicitly initialize my variables although I'd guess this is not necessary nowadays?
-        Arrays.fill(treeTypeInstanceCount, 0);
+        for (int x = 0; x < chunksX; x++) {
+            for (int y = 0; y < chunksY; y++) {
 
-        for (int x = 0; x < tilesX; x++) {
-            for (int y = 0; y < tilesY; y++) {
-                for (int z = 0; z < treesPerTile; z++) {
+                TreeChunk chunk = new TreeChunk(treesPerChunk,x * chunkSize - (worldSizeHalf), y * chunkSize - (worldSizeHalf));
+
+                world[x][y] = chunk;
+
+                for (int treeCounter = 0; treeCounter < treesPerChunk; treeCounter++) {
 
                     tt = convertToTreeType(MathUtils.random(100));
 
-                    treeTypes[counter] = tt;
-                    treeTypeInstanceCount[tt]++;
+                    //treeTypes[counter] = tt;
+                    //treeTypeInstanceCount[tt]++;
 
+                    float ix = chunk.worldOffsetX + getSubPosition();
+                    float iz = chunk.worldOffsetY + getSubPosition();
+
+                    world[x][y].addInstance(tt,new Vector3(
+                        ix ,
+                        //noise.getConfiguredNoise((float)x / tilesX, (float)y / tilesY) * 128,
+                        noise.getConfiguredNoise(ix / tileSize , iz / tileSize ) * 32,
+                        iz),
+                        lodModels[tt].radius);
+
+                    /*
                     treePositions[counter] = new Vector3(
                         (x*tileSize - (worldSize / 2) + getSubPosition()) ,
                         //noise.getConfiguredNoise((float)x / tilesX, (float)y / tilesY) * 128,
                         noise.getConfiguredNoise(x , y ) * 32,
                         (y*tileSize -  (worldSize / 2) + getSubPosition()) );
+
+                     */
 
                     counter++;
                 }
@@ -360,7 +405,7 @@ public class DemoScreen implements Screen {
 
     private void takeCameraHome()
     {
-        float startPos = tileSize * (tilesY / 4);
+        float startPos = chunkSize * (chunksY / 4);
         camera.position.set(0,128,-startPos);
         camera.up.set(Vector3.Y);
         camera.lookAt(0,0,0);
@@ -380,7 +425,7 @@ public class DemoScreen implements Screen {
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.35f, 0.35f, 0.4f, 1f));
         environment.add(new DirectionalLight().set(1f, 1f, 0.85f, 0, dirVector.y, dirVector.z));
 
-        float maxVisibility = 2 * tilesX * tileSize;
+        float maxVisibility = 2 * maxDistance;
         if (maxVisibility < 1000) maxVisibility = 1000;
 
         camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());

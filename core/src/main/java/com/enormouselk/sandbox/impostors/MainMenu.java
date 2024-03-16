@@ -10,6 +10,8 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.GdxRuntimeException;
+import com.badlogic.gdx.utils.viewport.FillViewport;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.kotcrab.vis.ui.VisUI;
 import com.kotcrab.vis.ui.widget.VisLabel;
@@ -80,9 +82,9 @@ public class MainMenu implements Screen {
         root.setFillParent(true);
         stage.addActor(root);
 
-        window = new VisWindow("--- PARAMETERS ---");
+        window = new VisWindow("--- INSTANCED IMPOSTORS ---");
 
-        sliderWorldSize = new VisSlider(10,maxWorldSize,10,false);
+        sliderWorldSize = new VisSlider(20,maxWorldSize,10,false);
         sliderWorldSize.setValue(1000);
         legendWorldSize = new VisLabel(String.format(defaultLocale,sizeTemplate,maxWorldSize*10));
         //final VisLabel legendWorldSize = new VisLabel(" ");
@@ -139,7 +141,8 @@ public class MainMenu implements Screen {
             }
         });
 
-        startButton = new VisTextButton("run demo");
+
+        startButton = new VisTextButton("run demo","blue");
         startButton.addListener(new ChangeListener() {
             @Override
             public void changed (ChangeEvent event, Actor actor) {
@@ -166,6 +169,10 @@ public class MainMenu implements Screen {
         window.clear();
 
         window.defaults().padLeft(8).padTop(16);
+
+        window.add("If you plan anything like a 3D game with lots of objects").colspan(3).row();
+        window.add("you can use / extend / modify / try different parameters with this demo").colspan(3).padTop(8).row();
+        window.add("to find out how much stuff there can be without impairing the perfomance.").colspan(3).padTop(8).row();
 
         window.add("World size : ").right().padTop(32);
         window.add(sliderWorldSize).padTop(32);
@@ -194,6 +201,7 @@ public class MainMenu implements Screen {
         window.add("LOD2 = reduced detail, for objects closer than impostor distance").colspan(3).padTop(4).row();
         window.add("Impostor = an image of 3D model flattened to 2D surface").colspan(3).padTop(4).row();
         window.add("Each impostor uses one texture of the given size - the bigger the size the better the quality.").colspan(3).padTop(4).row();
+        window.add("- 16th of March 2024 Erkka Lehmus / Enormous Elk -").colspan(3).padTop(16).padBottom(32).row();
 
         window.pack();
         window.centerWindow();

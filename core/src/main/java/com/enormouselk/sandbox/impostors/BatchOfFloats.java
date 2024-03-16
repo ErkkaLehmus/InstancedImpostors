@@ -33,7 +33,7 @@ public class BatchOfFloats {
 
         if (position >= capacity) {
             if (streamer != null)
-                streamer.flush(id);
+                streamer.flush(id,true);
         }
 
         data[position] = val;
@@ -63,7 +63,7 @@ public class BatchOfFloats {
     }
 
     public interface FloatStreamer {
-        void flush(int id);
+        void flush(int id, boolean flushBatch);
     }
 
 }

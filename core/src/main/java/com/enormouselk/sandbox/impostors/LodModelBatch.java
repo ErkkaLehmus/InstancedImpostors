@@ -342,14 +342,7 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
         else
         {
             //use the chosen LOD
-
             offsets[lodTemp].put(instancePosition);
-            /*
-            offsets[lodTemp].put(instancePosition.x);
-            offsets[lodTemp].put(instancePosition.y);
-            offsets[lodTemp].put(instancePosition.z);
-
-             */
             lodCount[lodTemp]++;
         }
     }
@@ -373,8 +366,8 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
 
 
     @Override
-    public void flush(int id) {
-
+    public void flush(int id, boolean flushBatch)
+    {
         if (modelBatch != null)
         {
             renderables[id].meshPart.mesh.setInstanceData(offsets[id].data, 0, offsets[id].position);
@@ -383,7 +376,10 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
             }
             modelBatch.render(renderables[id]);
 
+            if (flushBatch) modelBatch.flush();
+
         }
+
         offsets[id].clear();
     }
 
@@ -395,13 +391,13 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
     {
         if (hasDecal) {
             if (!offsets[decalIndex].isEmpty()) {
-                flush(decalIndex);
+                flush(decalIndex,false);
             }
         }
         for (int i = 0; i < LOD_MAX ; i++) {
             if (!offsets[i].isEmpty())
             {
-                flush(i);
+                flush(i,false);
             }
         }
         modelBatch.flush();
@@ -693,7 +689,7 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
         uvHeight = (float) pxHeight / textureSize;
 
         pxWidth+=2;
-        pxHeight+=4;
+        pxHeight+=2;
 
 
         //For the demo we generate images of the model seen from E,NE,N,NW,W,SW,S,SE - that makes 8 different camera angles
@@ -743,7 +739,7 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
                 int dropY = round(cose * pxWidth - pxWidth) + baseLine;
 
                 //after the camera has been rotated we take a snapshot and store it in the pixmap
-                clipDecal(modelBatch, tmpCamera, renderable, fboPixmap, clippedPixmap, cropX-1, cropY + dropY +2, pxWidth, pxHeight, offsetX, offsetY - (dropY));
+                clipDecal(modelBatch, tmpCamera, renderable, fboPixmap, clippedPixmap, cropX-1, cropY + dropY-1, pxWidth, pxHeight, offsetX, offsetY - (dropY));
 
                 //if (angleY == 15) angleY = 30;
                 angleY += angleYStep;
