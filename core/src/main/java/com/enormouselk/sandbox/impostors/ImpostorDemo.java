@@ -3,7 +3,6 @@ package com.enormouselk.sandbox.impostors;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.Timer;
 
 /** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
 public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
@@ -48,7 +47,7 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
        if (mainMenu != null) mainMenu.dispose();
     }
 
-    public void startDemo(Array<LodModel.LodSettings> settings, float worldSize, float treeDensity, float decalDistance, int textureSize)
+    public void startDemo(Array<LodSettings> settings, float worldSize, float treeDensity, float decalDistance, int textureSize)
     {
         mainMenu.clear();
         if (demoScreen == null) demoScreen = new DemoScreen(ImpostorDemo.this);

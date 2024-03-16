@@ -26,7 +26,6 @@ public class MainMenu implements Screen {
 
     private Stage stage;
 
-    private final int defaultTextureSize = 1024;
     private final int defaultWorldSize = 100;
     private final int maxWorldSize = 500;
     private final int defaultTreeDensity = 5;
@@ -52,7 +51,7 @@ public class MainMenu implements Screen {
     private VisLabel legendTreeDensity;
     private VisLabel legendWorldSize;
 
-    private Array<LodModel.LodSettings> lodSettings;
+    private Array<LodSettings> lodSettings;
 
     public MainMenu(ImpostorDemo owner) {
         super();
@@ -153,9 +152,9 @@ public class MainMenu implements Screen {
     private void setDefaultModels()
     {
         lodSettings.clear();
-        lodSettings.add(new LodModel.LodSettings("graphics/fir","FIR",3,true, LodModel.LodSettings.SHADERTYPE_MINIMAL,false));
-        lodSettings.add(new LodModel.LodSettings("graphics/pine","PINE",3,true, LodModel.LodSettings.SHADERTYPE_MINIMAL,false));
-        lodSettings.add(new LodModel.LodSettings("graphics/birch","BIRCH",3,true, LodModel.LodSettings.SHADERTYPE_MINIMAL,false));
+        lodSettings.add(new LodSettings("graphics/fir","FIR",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
+        lodSettings.add(new LodSettings("graphics/pine","PINE",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
+        lodSettings.add(new LodSettings("graphics/birch","BIRCH",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
     }
 
     @Override

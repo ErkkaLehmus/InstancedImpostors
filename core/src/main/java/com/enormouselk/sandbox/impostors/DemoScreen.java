@@ -33,7 +33,6 @@ public class DemoScreen implements Screen {
     private static final int LOD_MAX = 3;
     //a helper variable, we need this to draw stats
 
-    private static final String[] TREE_TITLES = {"FIR","PINE","BIRCH"};
 
     private final String distanceTemplate = "%d m";
     private final String percentTemplate = "%d %%";
@@ -55,12 +54,18 @@ public class DemoScreen implements Screen {
     private String cachedDecalPercentDistance;
 
 
-    private final LodModel[] lodModels = new LodModel[TREE_TYPES_MAX];
-    //private Quaternion q;
-    //private Matrix4 mat4;
+    //OK, it would be wise to make LodModelBatch and the basic LodModel to implement
+    //a common base interface, so that it would be easy to switch between them in the code.
+    //But that is not my top priority today...
+
+    private final LodModelBatch[] lodModels = new LodModelBatch[TREE_TYPES_MAX];
+    //private final LodModel[] lodModels = new LodModel[TREE_TYPES_MAX];
+
+
+
     private Vector3 vec3Temp;
     private Vector2 vec2Temp;
-    private LodModel lodModel;
+    private LodModelBatch lodModel;
 
 
     private final int tileSize = 10;
@@ -81,7 +86,7 @@ public class DemoScreen implements Screen {
     private final int[] treeTypeInstanceCount = new int[TREE_TYPES_MAX];
     //and yet another array to store the amount of each tree type
 
-    private Array<LodModel.LodSettings> lodSettings;
+    private Array<LodSettings> lodSettings;
 
 
     private final ImpostorDemo owner;
@@ -91,7 +96,7 @@ public class DemoScreen implements Screen {
         this.owner = owner;
     }
 
-    public void initGraphics(DemoEventListener listener, Array<LodModel.LodSettings> lodSettings, int worldSize, int treeDensity, float decalDistance, int textureSize)
+    public void initGraphics(DemoEventListener listener, Array<LodSettings> lodSettings, int worldSize, int treeDensity, float decalDistance, int textureSize)
     {
         if (listener != null) listener.working("initializing...");
 
@@ -100,6 +105,7 @@ public class DemoScreen implements Screen {
         Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
         Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
         Gdx.gl32.glCullFace(GL32.GL_BACK);
+        Gdx.gl32.glDisable(GL32.GL_BLEND);
 
         disableRendering = true;
         tilesX = worldSize;
@@ -125,34 +131,13 @@ public class DemoScreen implements Screen {
     {
         if (counter < lodSettings.size)
         {
-            LodModel.LodSettings s = lodSettings.get(counter);
+            LodSettings s = lodSettings.get(counter);
             if (listener != null) listener.working("generating "+s.ID);
-            lodModels[counter] = new LodModel(s,treeTypeInstanceCount[TREE_TYPE_FIR], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
+            lodModels[counter] = new LodModelBatch(s,4000, decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
+            //lodModels[counter] = new LodModelBatch(s,treeTypeInstanceCount[TREE_TYPE_FIR], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
         }
         else if (listener != null) listener.finished();
 
-        /*
-        switch (counter) {
-            case 0:
-                if (listener != null) listener.working("generating fir trees");
-                lodModels[TREE_TYPE_FIR] = new LodModel("graphics/fir", "FIR", LOD_MAX, true,treeTypeInstanceCount[TREE_TYPE_FIR], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
-                break;
-
-            case 1:
-                if (listener != null) listener.working("generating pine trees");
-                lodModels[TREE_TYPE_PINE] = new LodModel("graphics/pine", "PINE", LOD_MAX, true,treeTypeInstanceCount[TREE_TYPE_PINE], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
-                break;
-
-            case 2:
-                if (listener != null) listener.working("generating birch trees");
-                lodModels[TREE_TYPE_BIRCH] = new LodModel("graphics/birch", "BIRCH", LOD_MAX, false, treeTypeInstanceCount[TREE_TYPE_BIRCH], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
-                break;
-            default:
-                if (listener != null) listener.finished();
-                break;
-        }
-
-         */
         counter++;
     }
 
@@ -185,10 +170,6 @@ public class DemoScreen implements Screen {
         profiler.reset();
 
         controller.update();
-        Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
-        Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
-        Gdx.gl32.glCullFace(GL32.GL_BACK);
-        Gdx.gl32.glDisable(GL32.GL_BLEND);
         ScreenUtils.clear(Color.SKY, true);
         checkUserInput();
 
@@ -201,10 +182,25 @@ public class DemoScreen implements Screen {
         startTime = TimeUtils.nanoTime();
         batch.begin(camera);
 
+        vec2Temp.set(camera.position.x,camera.position.z);
+        for (int i = 0; i < treeCount; i++) {
+            vec3Temp = treePositions[i];
+            lodModel = lodModels[treeTypes[i]];
+
+            if (camFrustum.sphereInFrustum(vec3Temp,lodModel.radius))
+                lodModel.updateInstanceData(batch,camera.position,vec2Temp,vec3Temp);
+        }
+
+        for (int ii = 0; ii < TREE_TYPES_MAX; ii++) {
+            lodModels[ii].pushInstanceData();
+        }
+
+        /*
         for (int ii = 0; ii < TREE_TYPES_MAX; ii++) {
             lodModels[ii].render(batch);
             batch.flush();
         }
+         */
         batch.end();
         renderTime = TimeUtils.timeSinceNanos(startTime);
 
@@ -224,9 +220,10 @@ public class DemoScreen implements Screen {
     private void cacheDecalDistanceAsString()
     {
         int dist = (int)lodModels[0].getDecalDistance();
-        if (dist < 0) cachedDecalDistance = "disabled";
-        cachedDecalDistance =  String.format(distanceTemplate, (int)dist);
-        //return ((int)decalDistance * 100)+" %";
+        if (dist < 0)
+            cachedDecalDistance = "disabled";
+        else
+            cachedDecalDistance =  String.format(distanceTemplate, (int)dist);
     }
 
     private String getDecalDistanceAsPercentString()
@@ -248,7 +245,7 @@ public class DemoScreen implements Screen {
         font.draw(batch2D,"DECAL DISTANCE : " + getDecalDistanceAsPercentString() +" = " +getDecalDistanceAsString(), 10, 192);
         for (int ii = 0; ii < 3; ii++) {
             lodModel = lodModels[ii];
-            font.draw(batch2D,TREE_TITLES[ii],10, 80+ii*32);
+            font.draw(batch2D,lodModel.ID,10, 80+ii*32);
             for (int i = 0; i < LOD_MAX; i++) {
                 font.draw(batch2D, "LOD"+i+": " + lodModel.lodCount[i] , 140 + (i*220), 80+ii*32);
             }
@@ -351,22 +348,13 @@ public class DemoScreen implements Screen {
     }
 
     private void updateInstancedData(){
+
         for (int i = 0; i < TREE_TYPES_MAX; i++) {
             lodModels[i].resetInstanceData();
         }
 
-        vec2Temp.set(camera.position.x,camera.position.z);
-        for (int i = 0; i < treeCount; i++) {
-            vec3Temp = treePositions[i];
-            lodModel = lodModels[treeTypes[i]];
 
-            if (camFrustum.sphereInFrustum(vec3Temp,lodModel.radius))
-                lodModel.updateInstanceData(camera.position,vec2Temp,vec3Temp);
-        }
 
-        for (int ii = 0; ii < TREE_TYPES_MAX; ii++) {
-            lodModels[ii].pushInstanceData();
-        }
     }
 
 

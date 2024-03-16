@@ -3,21 +3,24 @@
  * License: You can freely copy, use, extend and modidy this code or parts of
  * this code in your own projects, both non-commercial and commercial.
  * You don't need to give credits to me, nor to replicate this license text.
- * Erkka Lehmus, 14th of March 2024
- * last updated at 16th of March 2024
+ * Erkka Lehmus, 16th of March 2024
  *
  * The software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
  * OR CONDITIONS OF ANY KIND, either express or implied.
  *
- * This class is suitable for a (relatively) small world. This stores all the
- * instance data in big arrays, and then sends everything at once for the GPU
- * to render. Simple, easy and carelessly consuming lots of memory.
+ * This class can be used for a world of any size. Instance data is stored in a fixed-size arrays,
+ * when an array gets full it will be flushed to the gpu, resetting the array.
+ * So, update / render aren't sharply separated, a flush might occur in the middle of the update loop.
+ *
+ * This approach puts a limit to the memory consumption, but the downside might be increased
+ * amount of draw calls.
  *
  ******************************************************************************/
 
 package com.enormouselk.sandbox.impostors;
 
 import static com.badlogic.gdx.math.MathUtils.HALF_PI;
+import static com.badlogic.gdx.math.MathUtils.cosDeg;
 import static com.badlogic.gdx.math.MathUtils.round;
 import static com.badlogic.gdx.math.MathUtils.sinDeg;
 import static java.lang.Math.pow;
@@ -53,11 +56,13 @@ import net.mgsx.gltf.scene3d.scene.SceneModel;
 
 import java.nio.IntBuffer;
 
-class LodModel {
+class LodModelBatch implements BatchOfFloats.FloatStreamer {
 
     private static final String debugFilePath = null;
     //private static final String debugFilePath = "tmp/lodtest";
     //if debugFilePath is not null, png files of generated impostors will be saved at the given folder
+
+    private ModelBatch modelBatch;
 
     private float textureSize;
     private final float decalCameraDistance = 100;
@@ -126,13 +131,14 @@ class LodModel {
 
     /**
      * Construct a 3D model with different LOD levels and an 2D impostor.
-     * The demo doesn't support glb but has a minimal shader using vertex colors and normals.
+     * The demo doesn't support pbr rendering but has a minimal shader using vertex colors and normals.
      *
-     * This class is suitable for a (relatively) small world. This stores all the
-     * instance data in big arrays, sending everything at once for the GPU to render.
-     * Simple, easy and carelessly consuming lots of memory.
-     * There is not a fixed upper limit to the amount of instances - if an array
-     * is about to flow over more memory will be allocated. Mmmm mmmmore memory!
+     * This class can be used for a world of any size. Instance data is stored in a fixed-size arrays,
+     * when an array gets full it will be sent to the gpu, resetting the array.
+     * So, update / render aren't sharply separated, but some data might be sent to the gpu on the fly,
+     * so the process flows like a stream.
+     * This approach puts a limit to the memory consumption, but the downside might be incsreased
+     * amount of draw calls.
      *
      * @param settings filename and other such settings
      * @param maxInstances maximum amount if instances that can be displayed at once
@@ -141,7 +147,7 @@ class LodModel {
      * @param environment environment
      * @param shaderProvider shaderProvider
      */
-    public LodModel(LodSettings settings, int maxInstances, float decalDistance, float maxDistance, int textureSize, Environment environment, InstancedShaderProvider shaderProvider) {
+    public LodModelBatch(LodSettings settings, int maxInstances, float decalDistance, float maxDistance, int textureSize, Environment environment, InstancedShaderProvider shaderProvider) {
         this.ID = settings.ID;
         this.instancedShaderProvider = shaderProvider;
         LOD_MAX = settings.lodMax;
@@ -155,7 +161,7 @@ class LodModel {
             this.maxDecalInstances = maxInstances;
             //maxModelInstances = maxInstances;
             //below is what I'd actually like to have, but that will need more testing to ensure it works reliably
-            maxModelInstances = MathUtils.ceilPositive(maxInstances * decalDistance);
+            maxModelInstances = maxInstances;
         }
         else {
             decalIndex = -1;
@@ -177,6 +183,7 @@ class LodModel {
     }
 
     public void dispose() {
+        modelBatch = null;
         if (texture != null) texture.dispose();
         for (int i = 0; i < renderables.length; i++) {
             if (renderables[i] != null) {
@@ -210,6 +217,10 @@ class LodModel {
 
     public void reallocBuffers(float decalDistance)
     {
+        //currently disabled, leaving this here if someday we have an UI option
+        //to adjust the batch capacity on the fly, just for the demo purposes
+        //to examine how the batch size affects the performance and memory consumption
+        /*
         int oldMax = maxModelInstances;
         maxModelInstances = MathUtils.ceilPositive(maxDecalInstances * decalDistance);
 
@@ -224,8 +235,7 @@ class LodModel {
                 //offsets[i] = new BatchOfFloats(maxModelInstances * 3); // 16 floats for mat4
             }
         }
-
-
+         */
     }
 
     public int getDecalDistance()
@@ -240,22 +250,29 @@ class LodModel {
     public void resetInstanceData() {
         for (int i = 0; i < LOD_MAX; i++) {
             lodCount[i] = 0;
-            offsets[i].position(0);
+            //offsets[i].position(0);
         }
 
         decalCount = 0;
+
+        /*
         if (hasDecal)
             offsets[decalIndex].position(0);
+
+         */
     }
 
     /**
      * This does the actual updating, calculating the LOD level to use, and determining the impostor image based on camera angle
+     * @param modelBatch quick, to the Batchmobile! If not null, will be used for rendering.
      * @param cameraPosition x,y,z
      * @param cameraLocation2D x,z
      * @param instancePosition x,y,z
      */
-    public void updateInstanceData(Vector3 cameraPosition, Vector2 cameraLocation2D, Vector3 instancePosition)
+    public void updateInstanceData(ModelBatch modelBatch,Vector3 cameraPosition, Vector2 cameraLocation2D, Vector3 instancePosition)
     {
+        this.modelBatch = modelBatch;
+
         distTemp = cameraPosition.dst(instancePosition);
         lodTemp = getLODlevel(distTemp);
         //get the LOD level based on distance between the camera and the instance
@@ -306,10 +323,10 @@ class LodModel {
 
 
             // put the 16 floats for mat4 in the float buffer
-            offsets[decalIndex].safePut(mat4.getValues());
+            offsets[decalIndex].put(mat4.getValues());
 
             //store the v offset for uv offset
-            offsets[decalIndex].safePut(tmpFloat);
+            offsets[decalIndex].put(tmpFloat);
 
             //then we compute the u offset based on the camera angle
             angleTemp = MathUtils.atan2Deg360(cameraPosition.z-instancePosition.z,cameraPosition.x - instancePosition.x);
@@ -317,7 +334,7 @@ class LodModel {
             tmpStepY = round((angleTemp) / angleXStep);
             if (tmpStepY >= stepsY) tmpStepY = stepsY-1;
             tmpFloat =  tmpStepY * uvHeight;
-            offsets[LOD_MAX].safePut(tmpFloat);
+            offsets[LOD_MAX].put(tmpFloat);
 
             decalCount++;
 
@@ -326,7 +343,7 @@ class LodModel {
         {
             //use the chosen LOD
 
-            offsets[lodTemp].safePut(instancePosition);
+            offsets[lodTemp].put(instancePosition);
             /*
             offsets[lodTemp].put(instancePosition.x);
             offsets[lodTemp].put(instancePosition.y);
@@ -355,44 +372,41 @@ class LodModel {
     }
 
 
+    @Override
+    public void flush(int id) {
+
+        if (modelBatch != null)
+        {
+            renderables[id].meshPart.mesh.setInstanceData(offsets[id].data, 0, offsets[id].position);
+            if (id == decalIndex) {
+                texture.bind(0);
+            }
+            modelBatch.render(renderables[id]);
+
+        }
+        offsets[id].clear();
+    }
+
     /**
-     * Use this after updating the instance data, before rendering
+     * Use this after updating the instance data, this will push and render all the instances
+     * which didn't get flushed during the update
      */
     public void pushInstanceData()
     {
         if (hasDecal) {
-            if (decalCount > 0) {
-                renderables[decalIndex].meshPart.mesh.setInstanceData(offsets[decalIndex].data, 0, offsets[decalIndex].position);
+            if (!offsets[decalIndex].isEmpty()) {
+                flush(decalIndex);
             }
         }
-
         for (int i = 0; i < LOD_MAX ; i++) {
-            if (lodCount[i] > 0)
+            if (!offsets[i].isEmpty())
             {
-                renderables[i].meshPart.mesh.setInstanceData(offsets[i].data,0, offsets[i].position);
+                flush(i);
             }
         }
+        modelBatch.flush();
     }
 
-    /**
-     * Render all the 3D instances and impostors using the given batch
-     * @param batch quick, to the batchmobile!
-     */
-    public void render(ModelBatch batch)
-    {
-        for (int i = 0; i < LOD_MAX; i++) {
-            if (lodCount[i] > 0) {
-                batch.render(renderables[i]);
-            }
-        }
-
-        if (hasDecal) {
-            if (decalCount > 0) {
-                texture.bind(0);
-                batch.render(getImpostor());
-            }
-        }
-    }
 
     public Renderable getImpostor()
     {
@@ -625,7 +639,7 @@ class LodModel {
         tmpCamera.far = decalCameraDistance*4;
 
         //let's try some heuristics to get a camera distance to yield an image of desired height in pixels
-        float camDistance = getOptimalCameraDistance(tmpCamera,radius, (int) (textureSize / 8) - 2);
+        float camDistance = getOptimalCameraDistance(tmpCamera,radius, (int) (textureSize / 8) - 4);
 
         //we look at the model from the given distance
         //having camera at 30 degrees elevation angle
@@ -678,6 +692,9 @@ class LodModel {
         uvWidth = (float) pxWidth / textureSize;
         uvHeight = (float) pxHeight / textureSize;
 
+        pxWidth+=2;
+        pxHeight+=4;
+
 
         //For the demo we generate images of the model seen from E,NE,N,NW,W,SW,S,SE - that makes 8 different camera angles
         //this, I think is the minimum, and since I had trouble fitting all the images on a 1024 x 1024 texture,
@@ -698,18 +715,17 @@ class LodModel {
         float angleX = 270;
         angleXStep = 360f / stepsY;
 
+        int baseLine = round(-(cosDeg(30) * pxWidth - pxWidth));
+
         for (int dir = 0; dir < stepsY; dir++) {
 
             offsetX = 0;
             float angleY = 30;
             for (int i = 0; i < stepsX; i++) {
 
-                float sine = sinDeg(angleY-30);
-                //float cose = cosDeg(angleY+30);
+                float cose = cosDeg(angleY);
 
                 camPos.set(0,0,camDistance);
-                //Vector3 camPos = new Vector3(0, 0, camDistance);
-                //Quaternion quaternion = new Quaternion();
                 quaternion.setEulerAngles(angleX, -angleY, 0);
 
                 camPos.mul(quaternion);
@@ -723,10 +739,11 @@ class LodModel {
                 //when the camera is taken higher, we need to gently adjust the image position,
                 //otherwise when seen from directly above we would only see a northern half of the model
                 //and the rest being cut out.
-                int dropY = -round(sine * pxWidth / 2);
+                //int dropY = -round(sine * pxWidth - baseLine);
+                int dropY = round(cose * pxWidth - pxWidth) + baseLine;
 
                 //after the camera has been rotated we take a snapshot and store it in the pixmap
-                clipDecal(modelBatch, tmpCamera, renderable, fboPixmap, clippedPixmap, cropX, cropY + dropY, pxWidth, pxHeight, offsetX, offsetY - (dropY));
+                clipDecal(modelBatch, tmpCamera, renderable, fboPixmap, clippedPixmap, cropX-1, cropY + dropY +2, pxWidth, pxHeight, offsetX, offsetY - (dropY));
 
                 //if (angleY == 15) angleY = 30;
                 angleY += angleYStep;
@@ -845,7 +862,7 @@ class LodModel {
 
 
         // Create offset FloatBuffer that will hold matrix4 and uv offset for each instance to pass to shader
-        offsets[decalIndex] = new BatchOfFloats(maxDecalInstances * DECAL_INSTANCE_DATA_SIZE); // 16 floats for mat4
+        offsets[decalIndex] = new BatchOfFloats(decalIndex,maxDecalInstances * DECAL_INSTANCE_DATA_SIZE,this); // 16 floats for mat4
         //offsets[decalIndex] = BufferUtils.newFloatBuffer(maxDecalInstances * DECAL_INSTANCE_DATA_SIZE); // 16 floats for mat4
 
         //((Buffer) offsets[decalIndex]).position(0);
@@ -866,6 +883,9 @@ class LodModel {
         //decalRenderable.material = new Material(attr);
 
         renderables[decalIndex] = decalRenderable;
+
+        uvWidth = (float) pxWidth / textureSize;
+        uvHeight = (float) pxHeight / textureSize;
     }
 
 
@@ -885,7 +905,7 @@ class LodModel {
             new VertexAttribute(VertexAttributes.Usage.Generic, 3, "i_worldTrans"));
          */
 
-        offsets[lodIndex] = new BatchOfFloats(maxModelInstances * 3); // 16 floats for mat4
+        offsets[lodIndex] = new BatchOfFloats(lodIndex,maxModelInstances * 3,this); // 16 floats for mat4
         //offsets[lodIndex] = BufferUtils.newFloatBuffer(maxModelInstances * 3); // 16 floats for mat4
 
         //((Buffer) offsets[lodIndex]).position(0);
@@ -910,128 +930,6 @@ class LodModel {
         IntBuffer buffer = BufferUtils.newIntBuffer(16);
         Gdx.gl.glGetIntegerv(GL32.GL_MAX_TEXTURE_SIZE, buffer);
         return buffer.get(0);
-    }
-
-    /**
-     * A custom class to replace FloatBuffer
-     * Surely this could be optimized ?
-     */
-    private static class BatchOfFloats
-    {
-        public float[] data;
-        public int capacity;
-        public int position;
-
-        public BatchOfFloats(int capacity) {
-            this.capacity = capacity;
-            data = new float[capacity];
-        }
-
-        public void position(int newPos)
-        {
-            this.position = newPos;
-        }
-
-        public void put(float val)
-        {
-            data[position] = val;
-            position++;
-        }
-
-        public void put(float val1,float val2,float val3)
-        {
-            put(val1);
-            put(val2);
-            put(val3);
-        }
-
-        public void put(float[] values)
-        {
-            for (float value : values) {
-                put(value);
-            }
-        }
-
-        public void safePut(float val)
-        {
-            if (position >= capacity)
-            {
-                grow(round(capacity * 1.25f));
-            }
-            data[position] = val;
-            position++;
-        }
-
-        public void safePut(float val1,float val2,float val3)
-        {
-            if (position+3 >= capacity)
-            {
-                grow(round(capacity * 1.25f));
-            }
-            data[position] = val1;
-            position++;
-            data[position] = val2;
-            position++;
-            data[position] = val3;
-            position++;
-        }
-
-        public void safePut(Vector3 values)
-        {
-            if (position+3 >= capacity)
-            {
-                grow(round(capacity * 1.25f));
-            }
-            data[position] = values.x;
-            position++;
-            data[position] = values.y;
-            position++;
-            data[position] = values.z;
-            position++;
-        }
-
-        public void safePut(float[] values)
-        {
-            if (position+values.length >= capacity)
-            {
-                grow(round(capacity * 1.25f));
-            }
-            for (float value : values) {
-                put(value);
-            }
-        }
-
-        /**
-         * Dynamically grow capacity, keeping current content.
-         * @param newCapacity new capacity
-         */
-        public void grow(int newCapacity)
-        {
-            if (newCapacity <= capacity) return;
-            float[] newData = new float[newCapacity];
-            System.arraycopy(data, 0, newData, 0, data.length);
-            data = newData;
-            capacity = newCapacity;
-        }
-
-        /**
-         * Grow capacity, destroying content
-         * Use only for an empty container!
-         * @param newCapacity new capacity
-         */
-        public void setCapacity(int newCapacity)
-        {
-            if (newCapacity <= capacity) return;
-            data = new float[newCapacity];
-            capacity = newCapacity;
-            position = 0;
-        }
-
-        public void clear()
-        {
-            position = 0;
-        }
-
     }
 
 
