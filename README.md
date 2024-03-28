@@ -1,17 +1,22 @@
 # InstancedImpostors
 
 A simple test to optimize 3D rendering by turning distant objects into flat impostors.
-I need this for my own game project (https://enormous-elk.itch.io/ancient-savo), as I'm developing on somewhat old hardware (Intel HD graphics 4600).
+
+I need this for my own game project (https://enormous-elk.itch.io/ancient-savo), as I'm developing on somewhat old hardware (Intel UHD graphics 620).
 I'd guess the same approach could be useful when optimizing for mobile platforms, or on desktop modern graphics cards when in addition to a lot of very detailed objects in the foreground you also need lots and lots of objects in the background, like foliage and stuff.
 
 Also the basics of Level Of Detail, using pre-generated simplified versions of models to be used when they are further away so that all of the details wont be visible anyway.
 For this demo I generated the LOD versions simply by using Decimate modifier in Blender. That was not the perfect solution, on some camera angles it is noticeable how lights and shadows change on the birch model due to too different geometry. But I decided to leave it as such for the demo, to given an impression of the possible caveats with the LOD approach.
-At the moment of writing this Antz is working on a project to programmatically generate LOD versions of models in a libGDX application - interesting, very interesting!
+
+If you are going to need a lot of 3D models, I recommend taking a look at mesh optimizer tool by Antz : https://antzgames.itch.io/libgdx-meshoptimizer
 
 Although this is for my own commercial game project, I wanted to release this piece of code to give back to the libGDX community.  
 
 yours
  Erkka from Enormous Elk
+
+PS. a quick note at 29th of March 2024; the current version source code is partially messy and not properly commented. Sorry for that, I was working when tired and just aimed at a quick upgrade, adding terrain and a hermit cabin.
+
 
 ## Background
 

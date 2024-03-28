@@ -62,7 +62,88 @@ public class InstancedShaderProvider extends DefaultShaderProvider {
 
     public BaseShader createPlainShader(Renderable renderable) {
 
-        return new DefaultShader(renderable);
+        //return new DefaultShader(renderable);
+
+        return new BaseShader() {
+
+            private final Matrix3 tmpM = new Matrix3();
+
+            @Override
+            public void begin(Camera camera, RenderContext context) {
+                program.bind();
+                program.setUniformMatrix("u_projViewTrans", camera.combined);
+                context.setDepthTest(GL32.GL_LESS);
+                //context.setDepthTest(GL30.GL_LEQUAL);
+
+                ColorAttribute ambientLight = (ColorAttribute) renderable.environment.get(ColorAttribute.AmbientLight);
+                DirectionalLightsAttribute dirLights = (DirectionalLightsAttribute) renderable.environment.get(DirectionalLightsAttribute.Type);
+
+                //if ambient light was not found, use hardcoded default
+                //this is for the demo version only
+                //would be better to handle with ifdef in the shader code
+                if (ambientLight != null) {
+                    float[] col = new float[]{ambientLight.color.r,ambientLight.color.g,ambientLight.color.b};
+                    program.setUniform3fv("u_ambientLight", col, 0, 3);
+                }
+                else {
+                    program.setUniform3fv("u_ambientLight", new float[]{0.95f, 0.75f, 0.77f}, 0, 3);
+                }
+
+                //same for the directional light
+
+                if ((dirLights!= null) && (!dirLights.lights.isEmpty()))
+                {
+                    DirectionalLight lit = dirLights.lights.get(0);
+                    float[] col = new float[]{lit.color.r,lit.color.g,lit.color.b};
+                    float[] dir = new float[]{lit.direction.x,lit.direction.y,lit.direction.z};
+                    program.setUniform3fv("u_dirLightColor", col, 0, 3);
+                    program.setUniform3fv("u_lightDir",dir, 0, 3);
+                }
+                else
+                {
+                    float lightDirY = MathUtils.sinDeg(50);
+                    float lightDirZ = MathUtils.cosDeg(50);
+
+                    program.setUniform3fv("u_dirLightColor", new float[]{1f, 1f, 0.75f}, 0, 3);
+                    program.setUniform3fv("u_lightDir", new float[]{0, lightDirY, lightDirZ}, 0, 3);
+                }
+
+
+            }
+
+            @Override
+            public void init() {
+                ShaderProgram.prependVertexCode = "#version 300 es\n";
+                ShaderProgram.prependFragmentCode = "#version 300 es\n";
+                program = new ShaderProgram(Gdx.files.internal("shaders/instanced.vert"),
+                        Gdx.files.internal("shaders/instanced.frag"));
+                if (!program.isCompiled()) {
+                    throw new GdxRuntimeException("Shader compile error: " + program.getLog());
+                }
+                init(program, renderable);
+            }
+
+            @Override
+            public int compareTo(Shader other) {
+                return 0;
+            }
+
+            @Override
+            public boolean canRender(Renderable instance) {
+                return !instance.meshPart.mesh.isInstanced();
+            }
+
+            @Override
+            public void render(Renderable renderable) {
+
+                tmpM.set(renderable.worldTransform);
+
+                program.setUniformMatrix("u_worldTrans", renderable.worldTransform);
+                program.setUniformMatrix("u_normalMatrix", tmpM.inv().transpose());
+                super.render(renderable);
+            }
+        };
+
     }
 
     public BaseShader createInstancedShader(Renderable renderable) {
@@ -130,7 +211,7 @@ public class InstancedShaderProvider extends DefaultShaderProvider {
 
             @Override
             public boolean canRender(Renderable instance) {
-                return true;
+                return instance.meshPart.mesh.isInstanced();
             }
         };
     }

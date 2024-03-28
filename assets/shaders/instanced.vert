@@ -21,6 +21,7 @@ out vec3 v_normal;
 
 void main () {
     v_color = a_color;
+    //v_color.r = 0.95;
     vec3 normal;
 
     #ifdef INSTANCED

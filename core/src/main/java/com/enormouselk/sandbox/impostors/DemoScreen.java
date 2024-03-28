@@ -8,11 +8,13 @@ import com.badlogic.gdx.graphics.GL32;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g3d.Environment;
-import com.badlogic.gdx.graphics.g3d.ModelBatch;
+import com.badlogic.gdx.graphics.g3d.*;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
+import com.badlogic.gdx.graphics.g3d.loader.G3dModelLoader;
+import com.badlogic.gdx.graphics.g3d.shaders.DefaultShader;
 import com.badlogic.gdx.graphics.g3d.utils.FirstPersonCameraController;
+import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.graphics.profiling.GLProfiler;
 import com.badlogic.gdx.math.Frustum;
 import com.badlogic.gdx.math.MathUtils;
@@ -21,11 +23,15 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.TimeUtils;
+import com.badlogic.gdx.utils.UBJsonReader;
+import com.enormouselk.sandbox.impostors.terrains.HeightMapTerrain;
+import com.enormouselk.sandbox.impostors.terrains.Terrain;
 
 import java.util.Arrays;
 
 public class DemoScreen implements Screen {
 
+    private static final int terrainHeightMultiplier = 32;
     public static final int TREE_TYPES_MAX = 3;
     public static final int TREE_TYPE_FIR = 0;
     public static final int TREE_TYPE_PINE = 1;
@@ -42,6 +48,9 @@ public class DemoScreen implements Screen {
     private GLProfiler profiler;
     private InstancedShaderProvider instancedShaderProvider;
     private Environment environment;
+
+    private Terrain terrain;
+    private Renderable terrainRenderable;
     private ModelBatch batch;
     private SpriteBatch batch2D;
     private BitmapFont font;
@@ -61,6 +70,10 @@ public class DemoScreen implements Screen {
     private final LodModelBatch[] lodModels = new LodModelBatch[TREE_TYPES_MAX];
     //private final LodModel[] lodModels = new LodModel[TREE_TYPES_MAX];
 
+    private Model cabinModel;
+    private ModelInstance cabinInstance;
+
+    private Vector3 cabinPosition;
 
 
     private Vector3 vec3Temp;
@@ -113,6 +126,7 @@ public class DemoScreen implements Screen {
 
         Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
         Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
+        //Gdx.gl32.glDisable(GL32.GL_CULL_FACE);
         Gdx.gl32.glCullFace(GL32.GL_BACK);
         Gdx.gl32.glDisable(GL32.GL_BLEND);
 
@@ -145,7 +159,12 @@ public class DemoScreen implements Screen {
             lodModels[counter] = new LodModelBatch(s,4000, decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
             //lodModels[counter] = new LodModelBatch(s,treeTypeInstanceCount[TREE_TYPE_FIR], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
         }
-        else if (listener != null) listener.finished();
+        else {
+             cabinModel = new G3dModelLoader(new UBJsonReader()).loadModel(Gdx.files.internal("graphics/cabin.g3db"));
+             cabinInstance = new ModelInstance(cabinModel);
+
+             if (listener != null) listener.finished();
+        }
 
         counter++;
     }
@@ -155,6 +174,14 @@ public class DemoScreen implements Screen {
         cacheDecalDistanceAsString();
         cacheDecalDistanceAsPercentString();
         createWorld();
+
+        if (cabinInstance != null)
+        {
+            cabinInstance.transform.setTranslation(cabinPosition);
+            cabinInstance.transform.rotate(Vector3.Y,180f);
+            //cabinInstance.transform.setToLookAt(Vector3.Z,Vector3.Y);
+        }
+
         disableRendering = false;
     }
 
@@ -172,7 +199,6 @@ public class DemoScreen implements Screen {
 
     @Override
     public void show() {
-
     }
 
     @Override
@@ -198,6 +224,9 @@ public class DemoScreen implements Screen {
         for (int x = 0; x < chunksX; x++) {
             for (int y = 0; y < chunksY; y++) {
                 TreeChunk chunk = world[x][y];
+
+                if (chunk == null) continue;
+
                 if (camFrustum.boundsInFrustum(chunk.boundingBox))
                 {
                     for (int i = 0; i < chunk.maxTrees; i++) {
@@ -232,6 +261,10 @@ public class DemoScreen implements Screen {
             batch.flush();
         }
          */
+
+        if (terrainRenderable != null) batch.render(terrainRenderable);
+        if (cabinInstance != null) batch.render(cabinInstance,environment);
+
         batch.end();
         renderTime = TimeUtils.timeSinceNanos(startTime);
 
@@ -348,15 +381,50 @@ public class DemoScreen implements Screen {
     }
 
     private void createWorld(){
-        Noise noise = new Noise();
+        //Noise noise = new Noise();
+        Noise noise = new Noise(1337,1f/64f,Noise.SIMPLEX,1,2.5f,0.5f);
         float worldSizeHalf = chunksX * chunkSize / 2f;
 
+        float elevations[] = new float[4];
+        elevations[0] = noise.getConfiguredNoise(1f / tileSize,1f / tileSize)*terrainHeightMultiplier;
+        elevations[1] = noise.getConfiguredNoise(1f / tileSize,9f / tileSize)*terrainHeightMultiplier;
+        elevations[2] = noise.getConfiguredNoise(9f / tileSize,9f / tileSize)*terrainHeightMultiplier;
+        elevations[3] = noise.getConfiguredNoise(9f / tileSize,1f / tileSize)*terrainHeightMultiplier;
+
+        float cabinElevation = elevations[0];
+        for (int i = 1; i < 4; i++) {
+            if (elevations[i] > cabinElevation) cabinElevation = elevations[i];
+        }
+
+        cabinPosition = new Vector3(5f , cabinElevation+1f,5f);
+
         int tt;
+
+
+        int worldSizeInTiles = MathUtils.round(maxDistance / tileSize);
+
+        float[] heightMapData = new float[worldSizeInTiles * worldSizeInTiles];
+
+        for (int x = 0; x < worldSizeInTiles; x++) {
+            for (int y = 0; y < worldSizeInTiles ; y++) {
+
+                float ix = x * tileSize - worldSizeHalf;
+                float iz = y * tileSize - worldSizeHalf;
+
+                heightMapData[y*worldSizeInTiles+x] =  noise.getConfiguredNoise(ix / tileSize, iz / tileSize) * terrainHeightMultiplier;
+            }
+        }
 
         for (int x = 0; x < chunksX; x++) {
             for (int y = 0; y < chunksY; y++) {
 
-                TreeChunk chunk = new TreeChunk(treesPerChunk,x * chunkSize - (worldSizeHalf), y * chunkSize - (worldSizeHalf));
+
+                float offX = x * chunkSize - (worldSizeHalf);
+                float offY = y * chunkSize - (worldSizeHalf);
+
+                //if ((offX == 0) && (offY == 0)) continue;;
+
+                TreeChunk chunk = new TreeChunk(treesPerChunk,offX,offY);
 
                 world[x][y] = chunk;
 
@@ -370,10 +438,17 @@ public class DemoScreen implements Screen {
                     float ix = chunk.worldOffsetX + getSubPosition();
                     float iz = chunk.worldOffsetY + getSubPosition();
 
+                    if ( ((ix > -5) && (ix < 15)) && ((iz > -5) && (iz < 15)) )
+                    {
+                        //too close to the cabin, relocate
+                        ix += 32;
+                        iz -= 32;
+                    }
+
                     world[x][y].addInstance(tt,new Vector3(
                         ix ,
                         //noise.getConfiguredNoise((float)x / tilesX, (float)y / tilesY) * 128,
-                        noise.getConfiguredNoise(ix / tileSize , iz / tileSize ) * 32,
+                        noise.getConfiguredNoise(ix / tileSize , iz / tileSize ) * terrainHeightMultiplier,
                         iz),
                         lodModels[tt].radius);
 
@@ -390,6 +465,16 @@ public class DemoScreen implements Screen {
                 }
             }
         }
+
+        terrain = new HeightMapTerrain(heightMapData,worldSizeInTiles,1f);
+        terrainRenderable = terrain.getRenderable();
+
+        ShaderProgram.prependVertexCode = "";
+        ShaderProgram.prependFragmentCode = "";
+
+        Shader terrainShader = new DefaultShader(terrainRenderable);
+        terrainShader.init();
+        terrainRenderable.shader = terrainShader;
     }
 
     private void updateInstancedData(){
@@ -434,7 +519,7 @@ public class DemoScreen implements Screen {
         takeCameraHome();
         camFrustum = camera.frustum;
 
-        batch = new ModelBatch();
+        batch = new ModelBatch(instancedShaderProvider,null);
         batch2D = new SpriteBatch();
 
         font = new BitmapFont(Gdx.files.internal("fonts/lsans-15.fnt"));

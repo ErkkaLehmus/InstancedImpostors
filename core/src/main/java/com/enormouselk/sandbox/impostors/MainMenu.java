@@ -5,11 +5,13 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL32;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.GdxRuntimeException;
+import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.FillViewport;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
@@ -42,7 +44,10 @@ public class MainMenu implements Screen {
 
     private final ImpostorDemo owner;
 
-    private VisWindow window;
+    //private VisWindow window;
+
+    VisTable root;
+    private VisTable window;
     private VisTextButton startButton;
     private VisTextButton resetButton;
     private VisSlider sliderImpostorDistance;
@@ -73,16 +78,19 @@ public class MainMenu implements Screen {
         setDefaultModels();
 
         VisUI.setSkipGdxVersionCheck(true);
+        //VisUI.load();
         VisUI.load(VisUI.SkinScale.X1);
         VisUI.setDefaultTitleAlign(Align.center);
 
+        //stage = new Stage(new ExtendViewport(1024,1024));
         stage = new Stage(new ScreenViewport());
 
-        VisTable root = new VisTable();
+        root = new VisTable();
         root.setFillParent(true);
         stage.addActor(root);
 
-        window = new VisWindow("--- INSTANCED IMPOSTORS ---");
+        //window = new VisWindow("--- INSTANCED IMPOSTORS ---");
+        window = new VisTable(true);
 
         sliderWorldSize = new VisSlider(20,maxWorldSize,10,false);
         sliderWorldSize.setValue(1000);
@@ -157,6 +165,7 @@ public class MainMenu implements Screen {
         lodSettings.clear();
         lodSettings.add(new LodSettings("graphics/fir","FIR",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
         lodSettings.add(new LodSettings("graphics/pine","PINE",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
+        //lodSettings.add(new LodSettings("graphics/cabin2","CABIN",3,false, LodSettings.SHADERTYPE_MINIMAL,false));
         lodSettings.add(new LodSettings("graphics/birch","BIRCH",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
     }
 
@@ -170,9 +179,8 @@ public class MainMenu implements Screen {
 
         window.defaults().padLeft(8).padTop(16);
 
-        window.add("If you plan anything like a 3D game with lots of objects").colspan(3).row();
-        window.add("you can use / extend / modify / try different parameters with this demo").colspan(3).padTop(8).row();
-        window.add("to find out how much stuff there can be without impairing the perfomance.").colspan(3).padTop(8).row();
+        window.add("If you plan anything like a 3D game with lots of objects you can try different parameters ").colspan(3).row();
+        window.add("to find out how much stuff there can be without impairing the performance.").colspan(3).padTop(8).row();
 
         window.add("World size : ").right().padTop(32);
         window.add(sliderWorldSize).padTop(32);
@@ -192,8 +200,8 @@ public class MainMenu implements Screen {
         window.add(resetButton).padTop(32).padBottom(32).padRight(32);
         window.add(startButton).padTop(32).padBottom(32).row();
 
-        window.add("Impostor distance determines at what distance 3D models will be displayed at 2D impostors.").colspan(3).row();
-        window.add("The distance is relative to the chosen world size, so if your world size is 1000 m").colspan(3).padTop(4).row();
+        //window.add("Impostor distance determines at what distance 3D models will be displayed at 2D impostors.").colspan(3).row();
+        window.add("The impostor distance is relative to the chosen world size, so if your world size is 1000 m").colspan(3).padTop(4).row();
         window.add("and Impostor distance is 50% models more than 500m from camera are displayed as impostors.").colspan(3).padTop(4).row();
         window.add("3D models have also their own LOD versions, and the demo uses 3 levels;").colspan(3).padTop(8).row();
         window.add("LOD0 = full detail, for objects closer than 1/4 of impostor distance").colspan(3).padTop(4).row();
@@ -201,14 +209,19 @@ public class MainMenu implements Screen {
         window.add("LOD2 = reduced detail, for objects closer than impostor distance").colspan(3).padTop(4).row();
         window.add("Impostor = an image of 3D model flattened to 2D surface").colspan(3).padTop(4).row();
         window.add("Each impostor uses one texture of the given size - the bigger the size the better the quality.").colspan(3).padTop(4).row();
-        window.add("- 16th of March 2024 Erkka Lehmus / Enormous Elk -").colspan(3).padTop(16).padBottom(32).row();
+        window.add("- 28th of March 2024 Erkka Lehmus / Enormous Elk -").colspan(3).padTop(16).padBottom(32).row();
 
         window.pack();
-        window.centerWindow();
-        stage.addActor(window.fadeIn());
+        //window.centerWindow();
+        //stage.addActor(window.fadeIn());
+
+        //stage.addActor(window);
+        root.add(window).center();
 
         sliderWorldSize.setValue(defaultWorldSize);
         sliderTreeDensity.setValue(defaultTreeDensity);
+
+        stage.getViewport().apply();
     }
 
     @Override
@@ -252,19 +265,19 @@ public class MainMenu implements Screen {
     public void clear()
     {
         window.clear();
-        window.getTitleLabel().setText("... PLEASE WAIT ...");
+        //window.getTitleLabel().setText("... PLEASE WAIT ...");
         window.add("Generating 3D, this might take a while.").row();
         window.add("Or this might crash, if there is not enough memory.").row();
         window.add("Let's hope for the best!").row();
         window.pack();
-        window.centerWindow();
+        //window.centerWindow();
     }
 
     public void addMessage(String message)
     {
         window.add(message).row();
         window.pack();
-        window.centerWindow();
+        //window.centerWindow();
     }
 
     private int getMaxTextureSize () {
