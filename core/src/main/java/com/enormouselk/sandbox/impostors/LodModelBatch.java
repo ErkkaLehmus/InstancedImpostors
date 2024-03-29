@@ -180,7 +180,7 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
         q = new Quaternion();
         mat4 = new Matrix4();
         renderables = new Renderable[LOD_MAX + 1];
-        setupInstancedMeshes(settings.filename,environment);
+        setupInstancedMeshes(settings.filename,settings.filetype,environment);
     }
 
     public void dispose() {
@@ -411,16 +411,32 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
     }
 
 
-    private void setupInstancedMeshes(String modelFile, Environment environment) {
-        Mesh lod0 = loadFromGLTF(modelFile + "_lod0.gltf");
-        setupInstancedMesh(lod0, 0, environment);
-        radius = lod0.calculateRadius(0,0,0);
+    private void setupInstancedMeshes(String modelFile, String fileType, Environment environment) {
 
-        Mesh lod1 = loadFromGLTF(modelFile + "_lod1.gltf");
-        setupInstancedMesh(lod1, 1, environment);
+        if (fileType.equalsIgnoreCase("gltf")) {
+            Mesh lod0 = loadFromGLTF(modelFile + "lod0.gltf");
+            setupInstancedMesh(lod0, 0, environment);
+            radius = lod0.calculateRadius(0, 0, 0);
 
-        Mesh lod2 = loadFromGLTF(modelFile + "_lod2.gltf");
-        setupInstancedMesh(lod2, 2, environment);
+            Mesh lod1 = loadFromGLTF(modelFile + "lod1.gltf");
+            setupInstancedMesh(lod1, 1, environment);
+
+            Mesh lod2 = loadFromGLTF(modelFile + "lod2.gltf");
+            setupInstancedMesh(lod2, 2, environment);
+        }
+        else
+        {
+            Mesh lod0 = loadFromGLB(modelFile + "lod0.glb");
+            setupInstancedMesh(lod0, 0, environment);
+            radius = lod0.calculateRadius(0, 0, 0);
+
+            Mesh lod1 = loadFromGLB(modelFile + "lod1.glb");
+            setupInstancedMesh(lod1, 1, environment);
+
+            Mesh lod2 = loadFromGLB(modelFile + "lod2.glb");
+            setupInstancedMesh(lod2, 2, environment);
+        }
+
 
         if (hasDecal) setupInstancedDecals(2);
     }
@@ -438,6 +454,7 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
         //also, to optimize memory usage I'd guess here we could also just pack the color
         //but for the demo I left it this way, for these are things I still need to learn more about
 
+        /*
         int coff = mesh.getVertexAttributes().getOffset(VertexAttributes.Usage.ColorUnpacked);
         if (coff >= 0) {
             int counter = coff;
@@ -458,6 +475,8 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
 
             mesh.setVertices(vertData);
         }
+
+         */
 
         //we dispose the rest of the sceneAsset. Mesh will be disposed in the LodModel.dispose()
         if (sceneAsset.scenes != null) {

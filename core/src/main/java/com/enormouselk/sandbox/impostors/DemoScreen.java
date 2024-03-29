@@ -159,7 +159,7 @@ public class DemoScreen implements Screen {
             LodSettings s = lodSettings.get(counter);
             if (listener != null) listener.working("generating "+s.ID);
 
-            System.out.println("generating "+s.ID);
+            //System.out.println("generating "+s.ID);
 
             lodModels[counter] = new LodModelBatch(s,4000, decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
             //lodModels[counter] = new LodModelBatch(s,treeTypeInstanceCount[TREE_TYPE_FIR], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);

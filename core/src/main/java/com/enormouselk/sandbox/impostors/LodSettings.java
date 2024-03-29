@@ -6,14 +6,16 @@ public class LodSettings {
     public static final int SHADERTYPE_PBR = 2;
 
     String filename;
+    String filetype;
     String ID;
     int lodMax;
     boolean generateImpostor;
     int shaderType;
     boolean external;
 
-    public LodSettings(String filename, String ID, int lodMax, boolean generateImpostor, int shaderType, boolean external) {
+    public LodSettings(String filename, String filetype, String ID, int lodMax, boolean generateImpostor, int shaderType, boolean external) {
         this.filename = filename;
+        this.filetype = filetype;
         this.ID = ID;
         this.lodMax = lodMax;
         this.generateImpostor = generateImpostor;

@@ -16,12 +16,7 @@ import com.badlogic.gdx.utils.viewport.FillViewport;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.kotcrab.vis.ui.VisUI;
-import com.kotcrab.vis.ui.widget.VisLabel;
-import com.kotcrab.vis.ui.widget.VisSelectBox;
-import com.kotcrab.vis.ui.widget.VisSlider;
-import com.kotcrab.vis.ui.widget.VisTable;
-import com.kotcrab.vis.ui.widget.VisTextButton;
-import com.kotcrab.vis.ui.widget.VisWindow;
+import com.kotcrab.vis.ui.widget.*;
 
 import java.nio.IntBuffer;
 import java.util.Locale;
@@ -53,6 +48,7 @@ public class MainMenu implements Screen {
     private VisSlider sliderImpostorDistance;
     private VisSlider sliderTreeDensity;
     private VisSlider sliderWorldSize;
+    private VisCheckBox checkBoxOptimized;
     VisSelectBox<Integer> selectTextureSize;
     private VisLabel legendImpostorDistance;
     private VisLabel legendTreeDensity;
@@ -75,7 +71,7 @@ public class MainMenu implements Screen {
         }
 
         lodSettings = new Array<>(3);
-        setDefaultModels();
+
 
         VisUI.setSkipGdxVersionCheck(true);
         //VisUI.load();
@@ -137,6 +133,8 @@ public class MainMenu implements Screen {
             }
         });
 
+        checkBoxOptimized = new VisCheckBox("Use optimized models");
+
         resetButton = new VisTextButton("reset to defaults");
         resetButton.addListener(new ChangeListener() {
             @Override
@@ -154,19 +152,30 @@ public class MainMenu implements Screen {
         startButton.addListener(new ChangeListener() {
             @Override
             public void changed (ChangeEvent event, Actor actor) {
+                setDefaultModels(checkBoxOptimized.isChecked());
                 owner.startDemo(lodSettings, sliderWorldSize.getValue(), sliderTreeDensity.getValue(), sliderImpostorDistance.getValue() / 100f,selectTextureSize.getSelected());
             }
         });
 
+
+
     }
 
-    private void setDefaultModels()
+    private void setDefaultModels(boolean optimized)
     {
         lodSettings.clear();
-        lodSettings.add(new LodSettings("graphics/optimized/fir","FIR",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
-        lodSettings.add(new LodSettings("graphics/optimized/pine","PINE",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
-        //lodSettings.add(new LodSettings("graphics/cabin2","CABIN",3,false, LodSettings.SHADERTYPE_MINIMAL,false));
-        lodSettings.add(new LodSettings("graphics/optimized/birch","BIRCH",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
+
+        if (optimized) {
+            lodSettings.add(new LodSettings("graphics/optimized/fir_", "gltf", "FIR", 3, true, LodSettings.SHADERTYPE_MINIMAL, false));
+            lodSettings.add(new LodSettings("graphics/optimized/pine_", "gltf","PINE", 3, true, LodSettings.SHADERTYPE_MINIMAL, false));
+            lodSettings.add(new LodSettings("graphics/optimized/birch_", "gltf","BIRCH", 3, true, LodSettings.SHADERTYPE_MINIMAL, false));
+        }
+        else
+        {
+            lodSettings.add(new LodSettings("graphics/fir-", "glb","FIR", 3, true, LodSettings.SHADERTYPE_MINIMAL, false));
+            lodSettings.add(new LodSettings("graphics/pine-", "glb","PINE", 3, true, LodSettings.SHADERTYPE_MINIMAL, false));
+            lodSettings.add(new LodSettings("graphics/birch-", "glb","BIRCH", 3, true, LodSettings.SHADERTYPE_MINIMAL, false));
+        }
     }
 
     @Override
@@ -197,6 +206,8 @@ public class MainMenu implements Screen {
         window.add("Texture size :").right();
         window.add(selectTextureSize).left().row();
 
+        window.add(checkBoxOptimized).colspan(2).right().row();
+
         window.add(resetButton).padTop(32).padBottom(32).padRight(32);
         window.add(startButton).padTop(32).padBottom(32).row();
 
@@ -209,7 +220,7 @@ public class MainMenu implements Screen {
         window.add("LOD2 = reduced detail, for objects closer than impostor distance").colspan(3).padTop(4).row();
         window.add("Impostor = an image of 3D model flattened to 2D surface").colspan(3).padTop(4).row();
         window.add("Each impostor uses one texture of the given size - the bigger the size the better the quality.").colspan(3).padTop(4).row();
-        window.add("- 28th of March 2024 Erkka Lehmus / Enormous Elk -").colspan(3).padTop(16).padBottom(32).row();
+        window.add("- 29th of March 2024 Erkka Lehmus / Enormous Elk -").colspan(3).padTop(16).padBottom(32).row();
 
         window.pack();
         //window.centerWindow();
@@ -262,13 +273,23 @@ public class MainMenu implements Screen {
         stage = null;
     }
 
-    public void clear()
+    public void clear(boolean useOptimized)
     {
         window.clear();
         //window.getTitleLabel().setText("... PLEASE WAIT ...");
         window.add("Generating 3D, this might take a while.").row();
         window.add("Or this might crash, if there is not enough memory.").row();
         window.add("Let's hope for the best!").row();
+
+        if (useOptimized)
+        {
+            window.add("Using optimized models.").row();
+        }
+        else
+        {
+            window.add("Using UNOPTIMIZED models.").row();
+        }
+
         window.pack();
         //window.centerWindow();
     }
