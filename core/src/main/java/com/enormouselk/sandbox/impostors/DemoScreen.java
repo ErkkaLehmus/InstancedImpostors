@@ -112,14 +112,21 @@ public class DemoScreen implements Screen {
 
     private final ImpostorDemo owner;
 
+    private boolean showTerrain;
+
+    private int instanceBufferMaxSize;
+
 
     public DemoScreen(ImpostorDemo owner) {
         this.owner = owner;
     }
 
-    public void initGraphics(DemoEventListener listener, Array<LodSettings> lodSettings, int worldSize, int treeDensity, float decalDistance, int textureSize)
+    public void initGraphics(DemoEventListener listener, Array<LodSettings> lodSettings, int worldSize, int treeDensity, float decalDistance, int textureSize, int instanceBufferMaxSize, boolean showTerrain)
     {
         if (listener != null) listener.working("initializing...");
+
+        this.showTerrain = showTerrain;
+        this.instanceBufferMaxSize = instanceBufferMaxSize;
 
         maxDistance = worldSize * tileSize;
         counter = 0;
@@ -161,7 +168,7 @@ public class DemoScreen implements Screen {
 
             //System.out.println("generating "+s.ID);
 
-            lodModels[counter] = new LodModelBatch(s,4000, decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
+            lodModels[counter] = new LodModelBatch(s,instanceBufferMaxSize, decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
             //lodModels[counter] = new LodModelBatch(s,treeTypeInstanceCount[TREE_TYPE_FIR], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
         }
         else {
@@ -270,7 +277,9 @@ public class DemoScreen implements Screen {
         }
          */
 
-        if (terrainRenderable != null) batch.render(terrainRenderable);
+
+        if ((showTerrain) && (terrainRenderable != null)) batch.render(terrainRenderable);
+
         if (cabinInstance != null) batch.render(cabinInstance,environment);
 
         batch.end();
@@ -474,15 +483,17 @@ public class DemoScreen implements Screen {
             }
         }
 
-        terrain = new HeightMapTerrain(heightMapData,worldSizeInTiles,1f);
-        terrainRenderable = terrain.getRenderable();
+        if (showTerrain) {
+            terrain = new HeightMapTerrain(heightMapData, worldSizeInTiles, 1f);
+            terrainRenderable = terrain.getRenderable();
 
-        ShaderProgram.prependVertexCode = "";
-        ShaderProgram.prependFragmentCode = "";
+            ShaderProgram.prependVertexCode = "";
+            ShaderProgram.prependFragmentCode = "";
 
-        Shader terrainShader = new DefaultShader(terrainRenderable);
-        terrainShader.init();
-        terrainRenderable.shader = terrainShader;
+            Shader terrainShader = new DefaultShader(terrainRenderable);
+            terrainShader.init();
+            terrainRenderable.shader = terrainShader;
+        }
     }
 
     private void updateInstancedData(){
@@ -577,6 +588,8 @@ public class DemoScreen implements Screen {
         }
 
         if (cabinModel != null) cabinModel.dispose();
+
+        if (terrain != null) terrain.dispose();
 
         instancedShaderProvider.dispose();
     }

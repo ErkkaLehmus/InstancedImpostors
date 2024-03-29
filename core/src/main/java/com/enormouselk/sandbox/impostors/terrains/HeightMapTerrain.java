@@ -44,7 +44,7 @@ public class HeightMapTerrain extends Terrain {
         field.magnitude.set(0f, magnitude, 0f);
         field.update();
 
-        Texture texture = new Texture(Gdx.files.internal("graphics/terrain.jpg"), true);
+        texture = new Texture(Gdx.files.internal("graphics/terrain.jpg"), true);
         texture.setFilter(Texture.TextureFilter.MipMapLinearLinear, Texture.TextureFilter.Linear);
         texture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
 

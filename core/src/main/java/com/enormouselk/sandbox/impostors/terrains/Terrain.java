@@ -1,5 +1,6 @@
 package com.enormouselk.sandbox.impostors.terrains;
 
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
 
 import com.badlogic.gdx.graphics.g3d.Renderable;
@@ -22,11 +23,18 @@ public abstract class Terrain implements Disposable {
 
     protected Renderable ground;
 
+    protected Texture texture;
+
+
     public Renderable getRenderable() {
         return ground;
     }
-    
-    
+
+    @Override
+    public void dispose() {
+        if (texture != null) dispose();
+    }
+
     protected ModelInstance groundModelInstance;
 
     public ModelInstance getModelInstance() {

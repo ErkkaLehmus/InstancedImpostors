@@ -30,10 +30,14 @@ public class MainMenu implements Screen {
     private final int defaultTreeDensity = 5;
     private final int maxTreeDensity = 9;
     private final int defaultImpostorDistance = 50;
+    private final int defaultInstanceBufferSize = 4000;
+    private final int minInstanceBufferSize = 400;
+    private final int maxInstanceBufferSize = 32000;
 
     private final String densityTemplate = "produces total %,d trees";
     private final String sizeTemplate = "%1$,d m x %1$,d m";
     private final String distanceTemplate = "%d %%";
+    private final String amountTemplate = "%,d";
 
     private final Locale defaultLocale = Locale.ENGLISH;
 
@@ -48,11 +52,15 @@ public class MainMenu implements Screen {
     private VisSlider sliderImpostorDistance;
     private VisSlider sliderTreeDensity;
     private VisSlider sliderWorldSize;
+    private VisSlider sliderInstanceBufferSize;
     private VisCheckBox checkBoxOptimized;
+    private VisCheckBox checkBoxImpostors;
+    private VisCheckBox checkBoxTerrain;
     VisSelectBox<Integer> selectTextureSize;
     private VisLabel legendImpostorDistance;
     private VisLabel legendTreeDensity;
     private VisLabel legendWorldSize;
+    private VisLabel legendInstanceBufferSize;
 
     private Array<LodSettings> lodSettings;
 
@@ -78,7 +86,6 @@ public class MainMenu implements Screen {
         VisUI.load(VisUI.SkinScale.X1);
         VisUI.setDefaultTitleAlign(Align.center);
 
-        //stage = new Stage(new ExtendViewport(1024,1024));
         stage = new Stage(new ScreenViewport());
 
         root = new VisTable();
@@ -86,7 +93,7 @@ public class MainMenu implements Screen {
         stage.addActor(root);
 
         //window = new VisWindow("--- INSTANCED IMPOSTORS ---");
-        window = new VisTable(true);
+        window = new VisTable(false);
 
         sliderWorldSize = new VisSlider(20,maxWorldSize,10,false);
         sliderWorldSize.setValue(1000);
@@ -101,6 +108,10 @@ public class MainMenu implements Screen {
         sliderImpostorDistance = new VisSlider(10,100,10,false);
         sliderImpostorDistance.setValue(defaultImpostorDistance);
         legendImpostorDistance = new VisLabel(String.format(defaultLocale,distanceTemplate,defaultImpostorDistance));
+
+        sliderInstanceBufferSize = new VisSlider(minInstanceBufferSize,maxInstanceBufferSize,100,false);
+        sliderInstanceBufferSize.setValue(defaultInstanceBufferSize);
+        legendInstanceBufferSize = new VisLabel(String.format(defaultLocale,amountTemplate,defaultInstanceBufferSize));
 
         selectTextureSize = new VisSelectBox<>();
         selectTextureSize.setItems(getAvailableTextureSizes());
@@ -133,7 +144,16 @@ public class MainMenu implements Screen {
             }
         });
 
+        sliderInstanceBufferSize.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                legendInstanceBufferSize.setText(String.format(defaultLocale,amountTemplate,(int) sliderInstanceBufferSize.getValue()));
+            }
+        });
+
         checkBoxOptimized = new VisCheckBox("Use optimized models");
+        checkBoxImpostors = new VisCheckBox("Use impostor decals");
+        checkBoxTerrain = new VisCheckBox("Show terrain");
 
         resetButton = new VisTextButton("reset to defaults");
         resetButton.addListener(new ChangeListener() {
@@ -153,7 +173,7 @@ public class MainMenu implements Screen {
             @Override
             public void changed (ChangeEvent event, Actor actor) {
                 setDefaultModels(checkBoxOptimized.isChecked());
-                owner.startDemo(lodSettings, sliderWorldSize.getValue(), sliderTreeDensity.getValue(), sliderImpostorDistance.getValue() / 100f,selectTextureSize.getSelected());
+                owner.startDemo(lodSettings, sliderWorldSize.getValue(), sliderTreeDensity.getValue(), sliderImpostorDistance.getValue() / 100f,selectTextureSize.getSelected(), (int) sliderInstanceBufferSize.getValue(), checkBoxTerrain.isChecked());
             }
         });
 
@@ -165,16 +185,18 @@ public class MainMenu implements Screen {
     {
         lodSettings.clear();
 
+        boolean useImpostors = checkBoxImpostors.isChecked();
+
         if (optimized) {
-            lodSettings.add(new LodSettings("graphics/optimized/fir_", "gltf", "FIR", 3, true, LodSettings.SHADERTYPE_MINIMAL, false));
-            lodSettings.add(new LodSettings("graphics/optimized/pine_", "gltf","PINE", 3, true, LodSettings.SHADERTYPE_MINIMAL, false));
-            lodSettings.add(new LodSettings("graphics/optimized/birch_", "gltf","BIRCH", 3, true, LodSettings.SHADERTYPE_MINIMAL, false));
+            lodSettings.add(new LodSettings("graphics/optimized/fir_", "gltf", "FIR", 3, useImpostors , LodSettings.SHADERTYPE_MINIMAL, false));
+            lodSettings.add(new LodSettings("graphics/optimized/pine_", "gltf","PINE", 3, useImpostors , LodSettings.SHADERTYPE_MINIMAL, false));
+            lodSettings.add(new LodSettings("graphics/optimized/birch_", "gltf","BIRCH", 3, useImpostors , LodSettings.SHADERTYPE_MINIMAL, false));
         }
         else
         {
-            lodSettings.add(new LodSettings("graphics/fir-", "glb","FIR", 3, true, LodSettings.SHADERTYPE_MINIMAL, false));
-            lodSettings.add(new LodSettings("graphics/pine-", "glb","PINE", 3, true, LodSettings.SHADERTYPE_MINIMAL, false));
-            lodSettings.add(new LodSettings("graphics/birch-", "glb","BIRCH", 3, true, LodSettings.SHADERTYPE_MINIMAL, false));
+            lodSettings.add(new LodSettings("graphics/fir-", "glb","FIR", 3, useImpostors , LodSettings.SHADERTYPE_MINIMAL, false));
+            lodSettings.add(new LodSettings("graphics/pine-", "glb","PINE", 3, useImpostors , LodSettings.SHADERTYPE_MINIMAL, false));
+            lodSettings.add(new LodSettings("graphics/birch-", "glb","BIRCH", 3, useImpostors , LodSettings.SHADERTYPE_MINIMAL, false));
         }
     }
 
@@ -186,10 +208,10 @@ public class MainMenu implements Screen {
 
         window.clear();
 
-        window.defaults().padLeft(8).padTop(16);
+        window.defaults().padLeft(8).padTop(6);
 
         window.add("If you plan anything like a 3D game with lots of objects you can try different parameters ").colspan(3).row();
-        window.add("to find out how much stuff there can be without impairing the performance.").colspan(3).padTop(8).row();
+        window.add("to find out how much stuff there can be without impairing the performance.").colspan(3).row();
 
         window.add("World size : ").right().padTop(32);
         window.add(sliderWorldSize).padTop(32);
@@ -203,10 +225,21 @@ public class MainMenu implements Screen {
         window.add(sliderImpostorDistance);
         window.add(legendImpostorDistance).left().row();
 
+        window.add("Instance buffer size : ").right();
+        window.add(sliderInstanceBufferSize);
+        window.add(legendInstanceBufferSize).left().row();
+
         window.add("Texture size :").right();
         window.add(selectTextureSize).left().row();
 
+        checkBoxOptimized.setChecked(true);
         window.add(checkBoxOptimized).colspan(2).right().row();
+
+        checkBoxImpostors.setChecked(true);
+        window.add(checkBoxImpostors).colspan(2).right().row();
+
+        checkBoxTerrain.setChecked(true);
+        window.add(checkBoxTerrain).colspan(2).right().row();
 
         window.add(resetButton).padTop(32).padBottom(32).padRight(32);
         window.add(startButton).padTop(32).padBottom(32).row();
@@ -214,6 +247,7 @@ public class MainMenu implements Screen {
         //window.add("Impostor distance determines at what distance 3D models will be displayed at 2D impostors.").colspan(3).row();
         window.add("The impostor distance is relative to the chosen world size, so if your world size is 1000 m").colspan(3).padTop(4).row();
         window.add("and Impostor distance is 50% models more than 500m from camera are displayed as impostors.").colspan(3).padTop(4).row();
+        window.add("Increasing instance buffer size might improve performance but is sure to eat more memory.").colspan(3).padTop(4).row();
         window.add("3D models have also their own LOD versions, and the demo uses 3 levels;").colspan(3).padTop(8).row();
         window.add("LOD0 = full detail, for objects closer than 1/4 of impostor distance").colspan(3).padTop(4).row();
         window.add("LOD1 = medium detail, for objects closer than 1/2 of impostor distance").colspan(3).padTop(4).row();

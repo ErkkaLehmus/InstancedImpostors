@@ -47,13 +47,13 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
        if (mainMenu != null) mainMenu.dispose();
     }
 
-    public void startDemo(Array<LodSettings> settings, float worldSize, float treeDensity, float decalDistance, int textureSize)
+    public void startDemo(Array<LodSettings> settings, float worldSize, float treeDensity, float decalDistance, int textureSize, int instanceBufferSize, boolean showTerrain)
     {
         boolean useOptimized = settings.get(0).filetype.equalsIgnoreCase("gltf");
         mainMenu.clear(useOptimized);
         if (demoScreen == null) demoScreen = new DemoScreen(ImpostorDemo.this);
 
-        demoScreen.initGraphics(ImpostorDemo.this,settings,  (int)worldSize,(int)treeDensity,decalDistance,textureSize);
+        demoScreen.initGraphics(ImpostorDemo.this,settings,  (int)worldSize,(int)treeDensity,decalDistance,textureSize, instanceBufferSize, showTerrain);
         handleDemoMessages = true;
     }
 
