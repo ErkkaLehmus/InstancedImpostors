@@ -163,10 +163,10 @@ public class MainMenu implements Screen {
     private void setDefaultModels()
     {
         lodSettings.clear();
-        lodSettings.add(new LodSettings("graphics/fir","FIR",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
-        lodSettings.add(new LodSettings("graphics/pine","PINE",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
+        lodSettings.add(new LodSettings("graphics/optimized/fir","FIR",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
+        lodSettings.add(new LodSettings("graphics/optimized/pine","PINE",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
         //lodSettings.add(new LodSettings("graphics/cabin2","CABIN",3,false, LodSettings.SHADERTYPE_MINIMAL,false));
-        lodSettings.add(new LodSettings("graphics/birch","BIRCH",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
+        lodSettings.add(new LodSettings("graphics/optimized/birch","BIRCH",3,true, LodSettings.SHADERTYPE_MINIMAL,false));
     }
 
     @Override

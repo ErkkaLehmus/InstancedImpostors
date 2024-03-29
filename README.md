@@ -5,10 +5,10 @@ A simple test to optimize 3D rendering by turning distant objects into flat impo
 I need this for my own game project (https://enormous-elk.itch.io/ancient-savo), as I'm developing on somewhat old hardware (Intel UHD graphics 620).
 I'd guess the same approach could be useful when optimizing for mobile platforms, or on desktop modern graphics cards when in addition to a lot of very detailed objects in the foreground you also need lots and lots of objects in the background, like foliage and stuff.
 
-Also the basics of Level Of Detail, using pre-generated simplified versions of models to be used when they are further away so that all of the details wont be visible anyway.
-For this demo I generated the LOD versions simply by using Decimate modifier in Blender. That was not the perfect solution, on some camera angles it is noticeable how lights and shadows change on the birch model due to too different geometry. But I decided to leave it as such for the demo, to given an impression of the possible caveats with the LOD approach.
+Also, the basics of Level Of Detail using pre-generated simplified versions of models to be used when they are further away so that all the details won't be visible anyway.
+One way to generate LOD version is to use decimate modifier in Blender. For this demo the LOD versions are generated using the Mesh Optimizer tool by Antz.
 
-If you are going to need a lot of 3D models, I recommend taking a look at mesh optimizer tool by Antz : https://antzgames.itch.io/libgdx-meshoptimizer
+Even if you are not going to need LOD versions, I recommend taking a look at mesh optimizer tool https://antzgames.itch.io/libgdx-meshoptimizer , for optimization without reducing the quality might give a noticeable boost in performance.
 
 Although this is for my own commercial game project, I wanted to release this piece of code to give back to the libGDX community.  
 

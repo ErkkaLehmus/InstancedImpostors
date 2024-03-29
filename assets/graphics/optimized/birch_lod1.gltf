@@ -1,0 +1,108 @@
+{
+"asset": {
+	"generator": "GDX glTF exporter 1.0",
+	"version": "2.0"
+},
+"scenes": [
+	{
+		"nodes": [ 0 ]
+	}
+],
+"nodes": [
+	{
+		"name": "tree",
+		"mesh": 0
+	}
+],
+"meshes": [
+	{
+		"primitives": [
+			{
+				"attributes": {
+					"NORMAL": 0,
+					"POSITION": 1,
+					"COLOR_0": 2
+				},
+				"indices": 3,
+				"material": 0
+			}
+		]
+	}
+],
+"accessors": [
+	{
+		"bufferView": 0,
+		"componentType": 5126,
+		"count": 714,
+		"type": "VEC3"
+	},
+	{
+		"bufferView": 1,
+		"componentType": 5126,
+		"count": 714,
+		"type": "VEC3",
+		"min": [ -2.93616, 0, -2.8475251 ],
+		"max": [ 2.5328023, 18, 3.0509276 ]
+	},
+	{
+		"bufferView": 2,
+		"componentType": 5123,
+		"count": 714,
+		"type": "VEC4"
+	},
+	{
+		"bufferView": 3,
+		"componentType": 5123,
+		"count": 4620,
+		"type": "SCALAR"
+	}
+],
+"materials": [
+	{
+		"extensions": {
+			"KHR_materials_specular": {
+				"specularColorFactor": [ 0.023713576, 0.023713576, 0.023713576 ]
+			},
+			"KHR_materials_ior": {
+				"ior": 1.45
+			}
+		},
+		"name": "Material",
+		"pbrMetallicRoughness": {
+			"metallicFactor": 0,
+			"roughnessFactor": 0.95
+		}
+	}
+],
+"bufferViews": [
+	{
+		"byteLength": 8568,
+		"buffer": 0
+	},
+	{
+		"byteOffset": 8568,
+		"byteLength": 8568,
+		"buffer": 0
+	},
+	{
+		"byteOffset": 17136,
+		"byteLength": 5712,
+		"buffer": 0
+	},
+	{
+		"byteOffset": 22848,
+		"byteLength": 9240,
+		"buffer": 0
+	}
+],
+"buffers": [
+	{
+		"uri": "birch_87.bin",
+		"byteLength": 32088
+	}
+],
+"extensionsUsed": [
+	"KHR_materials_ior",
+	"KHR_materials_specular"
+]
+}

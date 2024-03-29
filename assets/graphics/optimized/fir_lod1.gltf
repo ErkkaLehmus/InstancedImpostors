@@ -1,0 +1,108 @@
+{
+"asset": {
+	"generator": "GDX glTF exporter 1.0",
+	"version": "2.0"
+},
+"scenes": [
+	{
+		"nodes": [ 0 ]
+	}
+],
+"nodes": [
+	{
+		"name": "tree",
+		"mesh": 0
+	}
+],
+"meshes": [
+	{
+		"primitives": [
+			{
+				"attributes": {
+					"NORMAL": 0,
+					"POSITION": 1,
+					"COLOR_0": 2
+				},
+				"indices": 3,
+				"material": 0
+			}
+		]
+	}
+],
+"accessors": [
+	{
+		"bufferView": 0,
+		"componentType": 5126,
+		"count": 1566,
+		"type": "VEC3"
+	},
+	{
+		"bufferView": 1,
+		"componentType": 5126,
+		"count": 1566,
+		"type": "VEC3",
+		"min": [ -2.2592075, 0, -2.1690984 ],
+		"max": [ 2.2407272, 22, 2.4355993 ]
+	},
+	{
+		"bufferView": 2,
+		"componentType": 5123,
+		"count": 1566,
+		"type": "VEC4"
+	},
+	{
+		"bufferView": 3,
+		"componentType": 5123,
+		"count": 7512,
+		"type": "SCALAR"
+	}
+],
+"materials": [
+	{
+		"extensions": {
+			"KHR_materials_specular": {
+				"specularColorFactor": [ 0.023713576, 0.023713576, 0.023713576 ]
+			},
+			"KHR_materials_ior": {
+				"ior": 1.45
+			}
+		},
+		"name": "Material",
+		"pbrMetallicRoughness": {
+			"metallicFactor": 0,
+			"roughnessFactor": 0.95
+		}
+	}
+],
+"bufferViews": [
+	{
+		"byteLength": 18792,
+		"buffer": 0
+	},
+	{
+		"byteOffset": 18792,
+		"byteLength": 18792,
+		"buffer": 0
+	},
+	{
+		"byteOffset": 37584,
+		"byteLength": 12528,
+		"buffer": 0
+	},
+	{
+		"byteOffset": 50112,
+		"byteLength": 15024,
+		"buffer": 0
+	}
+],
+"buffers": [
+	{
+		"uri": "fir_80.bin",
+		"byteLength": 65136
+	}
+],
+"extensionsUsed": [
+	"KHR_materials_ior",
+	"KHR_materials_specular"
+]
+}

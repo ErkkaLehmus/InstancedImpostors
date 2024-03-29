@@ -26,6 +26,8 @@ import com.badlogic.gdx.utils.TimeUtils;
 import com.badlogic.gdx.utils.UBJsonReader;
 import com.enormouselk.sandbox.impostors.terrains.HeightMapTerrain;
 import com.enormouselk.sandbox.impostors.terrains.Terrain;
+import net.mgsx.gltf.loaders.glb.GLBLoader;
+import net.mgsx.gltf.scene3d.scene.SceneAsset;
 
 import java.util.Arrays;
 
@@ -156,11 +158,17 @@ public class DemoScreen implements Screen {
         {
             LodSettings s = lodSettings.get(counter);
             if (listener != null) listener.working("generating "+s.ID);
+
+            System.out.println("generating "+s.ID);
+
             lodModels[counter] = new LodModelBatch(s,4000, decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
             //lodModels[counter] = new LodModelBatch(s,treeTypeInstanceCount[TREE_TYPE_FIR], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
         }
         else {
-             cabinModel = new G3dModelLoader(new UBJsonReader()).loadModel(Gdx.files.internal("graphics/cabin.g3db"));
+             //cabinModel = new G3dModelLoader(new UBJsonReader()).loadModel(Gdx.files.internal("graphics/cabin.g3db"));
+
+             cabinModel = LodModelBatch.loadModelFromGLTF("graphics/optimized/cabin_lod0.gltf");
+
              cabinInstance = new ModelInstance(cabinModel);
 
              if (listener != null) listener.finished();
@@ -567,6 +575,8 @@ public class DemoScreen implements Screen {
         for (int i = 0; i < 3; i++) {
             lodModels[i].dispose();
         }
+
+        if (cabinModel != null) cabinModel.dispose();
 
         instancedShaderProvider.dispose();
     }

@@ -51,6 +51,7 @@ import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.BufferUtils;
 
 import net.mgsx.gltf.loaders.glb.GLBLoader;
+import net.mgsx.gltf.loaders.gltf.GLTFLoader;
 import net.mgsx.gltf.scene3d.scene.SceneAsset;
 import net.mgsx.gltf.scene3d.scene.SceneModel;
 
@@ -411,14 +412,14 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
 
 
     private void setupInstancedMeshes(String modelFile, Environment environment) {
-        Mesh lod0 = loadFromGLB(modelFile + "-lod0.glb");
+        Mesh lod0 = loadFromGLTF(modelFile + "_lod0.gltf");
         setupInstancedMesh(lod0, 0, environment);
         radius = lod0.calculateRadius(0,0,0);
 
-        Mesh lod1 = loadFromGLB(modelFile + "-lod1.glb");
+        Mesh lod1 = loadFromGLTF(modelFile + "_lod1.gltf");
         setupInstancedMesh(lod1, 1, environment);
 
-        Mesh lod2 = loadFromGLB(modelFile + "-lod2.glb");
+        Mesh lod2 = loadFromGLTF(modelFile + "_lod2.gltf");
         setupInstancedMesh(lod2, 2, environment);
 
         if (hasDecal) setupInstancedDecals(2);
@@ -471,6 +472,150 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
         }
 
         return mesh;
+    }
+
+    private Mesh loadFromGLTF(String filename) {
+        //SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal(filename));
+        SceneAsset sceneAsset = new GLTFLoader().load(Gdx.files.internal(filename));
+
+        Model model = sceneAsset.scene.model;
+        Mesh mesh = model.meshes.get(0);
+
+        //This is something I'm not 100% sure about, but what little I understand
+        //the .gltf format stores colors in linear space
+        //but my simple shaders want them in the good old rgb
+        //so I do the conversion beforehand to keep the shader happy!
+
+        //also, seems like Blender exports the vertex color as a Vec4 of unsigned shorts
+        //so we need to parse our floats to bytes and back
+
+        //29th of March 2024 : OK, or this is what I thought, but unfortunately
+        //this didn't work, so I need to experiment more later on.
+        //currently, the color conversion is handled in the shader
+        //which works, but feels silly to me to be coverting the colors over and over again
+        //each and every frame, each and every texel / fragment
+
+        /*
+        int coff = mesh.getVertexAttributes().getOffset(VertexAttributes.Usage.ColorUnpacked);
+        if (coff >= 0) {
+            int counter = coff;
+            //int stride = mesh.getVertexSize();
+            int stride = mesh.getVertexSize() / 4;
+            int max = mesh.getNumVertices() * stride;
+            //int max = mesh.getMaxVertices();
+
+            float[] vertData = new float[max];
+            vertData = mesh.getVertices(vertData);
+
+            while (counter < max) {
+
+                int raw1 = Float.floatToRawIntBits(vertData[counter]);
+                int raw2 = Float.floatToRawIntBits(vertData[counter+1]);
+
+                char col1 = (char) (raw1 & 0x000000000000FFFFL);
+                char col2 = (char) ((raw1 & 0x00000000FFFF0000L) >> 16);
+
+                char col3 = (char) (raw2 & 0x000000000000FFFFL);
+                char col4 = (char) ((raw2 & 0x00000000FFFF0000L) >> 16);
+
+                col1 = (char) Math.round(pow(col1,1.0 / 2.2)); // red
+                col2 = (char) Math.round(pow(col2,1.0 / 2.2)); // green
+                col3 = (char) Math.round(pow(col3,1.0 / 2.2)); // blue
+
+                //col4 = (char) Math.round(pow(col4,1.0 / 2.2));
+                //no need to touch the alpha
+
+                raw1 = col2 << 16 | col1;
+                raw2 = col4 << 16 | col3;
+
+                vertData[counter] = Float.intBitsToFloat(raw1);
+                vertData[counter+1] = Float.intBitsToFloat(raw2);
+
+
+
+                //vertData[counter] = (float) pow(vertData[counter], 1.0 / 2.2);
+                //vertData[counter] = 1f;
+                //vertData[counter + 1] = (float) pow(vertData[counter + 1], 1.0 / 2.2);
+                //vertData[counter + 2] = (float) pow(vertData[counter + 2], 1.0 / 2.2);
+
+                counter += stride;
+            }
+
+            mesh.setVertices(vertData);
+        }
+
+         */
+
+
+
+
+
+        //we dispose the rest of the sceneAsset. Mesh will be disposed in the LodModel.dispose()
+        if (sceneAsset.scenes != null) {
+            for (SceneModel scene : sceneAsset.scenes) {
+                scene.dispose();
+            }
+        }
+        if (sceneAsset.textures != null) {
+            for (Texture texture : sceneAsset.textures) {
+                texture.dispose();
+            }
+        }
+
+        return mesh;
+    }
+
+    public static Model loadModelFromGLTF(String filename) {
+        //SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal(filename));
+        SceneAsset sceneAsset = new GLTFLoader().load(Gdx.files.internal(filename));
+
+        Model model = sceneAsset.scene.model;
+        Mesh mesh = model.meshes.get(0);
+
+        //This is something I'm not 100% sure about, but what little I understand
+        //the .glb format stores colors in linear space
+        //but my simple shaders want them in the good old rgb
+        //so I do the conversion beforehand to keep the shader happy!
+        //also, to optimize memory usage I'd guess here we could also just pack the color
+        //but for the demo I left it this way, for these are things I still need to learn more about
+
+        /*
+        int coff = mesh.getVertexAttributes().getOffset(VertexAttributes.Usage.ColorUnpacked);
+        if (coff >= 0) {
+            int counter = coff;
+            int stride = mesh.getVertexSize() / 4;
+            int max = mesh.getNumVertices() * stride;
+
+            float[] vertData = new float[max];
+            vertData = mesh.getVertices(vertData);
+
+            while (counter < max) {
+                vertData[counter] = (float) pow(vertData[counter], 1.0 / 2.2);
+                //vertData[counter] = 1f;
+                vertData[counter + 1] = (float) pow(vertData[counter + 1], 1.0 / 2.2);
+                vertData[counter + 2] = (float) pow(vertData[counter + 2], 1.0 / 2.2);
+
+                counter += stride;
+            }
+
+            mesh.setVertices(vertData);
+        }
+
+         */
+
+        //we dispose the rest of the sceneAsset. Mesh will be disposed in the LodModel.dispose()
+        if (sceneAsset.scenes != null) {
+            for (SceneModel scene : sceneAsset.scenes) {
+                scene.dispose();
+            }
+        }
+        if (sceneAsset.textures != null) {
+            for (Texture texture : sceneAsset.textures) {
+                texture.dispose();
+            }
+        }
+
+        return model;
     }
 
 
