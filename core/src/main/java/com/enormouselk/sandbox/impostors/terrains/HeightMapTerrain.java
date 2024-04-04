@@ -27,7 +27,7 @@ public class HeightMapTerrain extends Terrain {
     private final HeightField field;
 
     public HeightMapTerrain(float[] data, int width,  float magnitude) {
-        this.size = width * 10;
+        this.size = width*10;
         this.width = width;
         this.heightMagnitude = magnitude;
 
@@ -66,9 +66,10 @@ public class HeightMapTerrain extends Terrain {
 
 
 
+        ground.worldTransform.setTranslation(-(float)size/2f,0,-(float)size/2f);
         ground.meshPart.mesh = field.mesh;
 
-        ground.meshPart.mesh.transform(new Matrix4(new Vector3(-(float)size/2f,0,-(float)size/2f),new Quaternion(),new Vector3(1f,1f,1f)));
+        //ground.meshPart.mesh.transform(new Matrix4(new Vector3(-(float)size/2f,0,-(float)size/2f),new Quaternion(),new Vector3(1f,1f,1f)));
 
         ground.meshPart.primitiveType = GL20.GL_TRIANGLES;
         ground.meshPart.offset = 0;

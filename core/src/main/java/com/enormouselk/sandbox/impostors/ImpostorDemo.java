@@ -2,6 +2,7 @@ package com.enormouselk.sandbox.impostors;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
 
 /** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
@@ -53,7 +54,10 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
         mainMenu.clear(useOptimized);
         if (demoScreen == null) demoScreen = new DemoScreen(ImpostorDemo.this);
 
+
+
         demoScreen.initGraphics(ImpostorDemo.this,settings,  (int)worldSize,(int)treeDensity,decalDistance,textureSize, instanceBufferSize, showTerrain);
+        //demoScreen.initGraphics(ImpostorDemo.this,settings,  (int)worldSize,(int)treeDensity,decalDistance,textureSize, MathUtils.round((float) Math.sqrt(instanceBufferSize/treeDensity)), showTerrain);
         handleDemoMessages = true;
     }
 

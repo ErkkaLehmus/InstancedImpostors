@@ -41,6 +41,7 @@ import com.badlogic.gdx.graphics.g3d.Model;
 import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.Renderable;
 import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute;
+import com.badlogic.gdx.graphics.g3d.utils.ShaderProvider;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Matrix4;
@@ -85,6 +86,7 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
 
 
     public InstancedShaderProvider instancedShaderProvider;
+
     public String ID;
     public Texture texture;
     public Renderable[] renderables;
@@ -680,7 +682,7 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
     }
 
     //a helper function to take a snapshot of the renderable, and clip the image to the pixmap
-    private void clipDecal(ModelBatch modelBatch, Camera tmpCamera, Renderable renderable, Pixmap fboPixmap, Pixmap clippedPixmap, int cropX, int cropY, int pxWidth, int pxHeight, int offsetX, int offsetY) {
+    private void clipDecal(ModelBatch modelBatch, Camera tmpCamera, Renderable renderable, Pixmap clippedPixmap, int cropX, int cropY, int pxWidth, int pxHeight, int offsetX, int offsetY, int fboWidth, int fboHeight) {
         Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
         Gdx.gl.glClear(GL32.GL_COLOR_BUFFER_BIT | GL32.GL_DEPTH_BUFFER_BIT);
 
@@ -692,8 +694,9 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
         //renderable.shader.render(renderable);
         //renderable.shader.end();
 
-        fboPixmap = Pixmap.createFromFrameBuffer(0, 0, fboPixmap.getWidth(), fboPixmap.getHeight());
+        Pixmap fboPixmap = Pixmap.createFromFrameBuffer(0, 0, fboWidth, fboHeight);
         clippedPixmap.drawPixmap(fboPixmap, offsetX, offsetY, cropX, cropY, pxWidth, pxHeight);
+        fboPixmap.dispose();
     }
 
 
@@ -837,9 +840,11 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
 
         Pixmap fboPixmap = Pixmap.createFromFrameBuffer(0, 0, fboWidth, fboHeight);
 
+
         if (debugFilePath != null) {
             PixmapIO.writePNG(Gdx.files.external(debugFilePath).child("fbo.png"), fboPixmap,0,false);
         }
+
 
         int cropX = getFirstLine(fboPixmap, false, fboWidth / 2, false, -1);
         int cropX2 = getFirstLine(fboPixmap, false, fboWidth / 2, false, 1);
@@ -870,12 +875,16 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
         angleYStepRad = angleYStep * MathUtils.degreesToRadians;
         offsetY = 0;
 
+        fboPixmap.dispose();
+
         Pixmap clippedPixmap = new Pixmap((int) textureSize, (int) textureSize, Pixmap.Format.RGBA8888);
 
         float angleX = 270;
         angleXStep = 360f / stepsY;
 
         int baseLine = round(-(cosDeg(30) * pxWidth - pxWidth));
+
+
 
         for (int dir = 0; dir < stepsY; dir++) {
 
@@ -903,7 +912,7 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
                 int dropY = round(cose * pxWidth - pxWidth) + baseLine;
 
                 //after the camera has been rotated we take a snapshot and store it in the pixmap
-                clipDecal(modelBatch, tmpCamera, renderable, fboPixmap, clippedPixmap, cropX-1, cropY + dropY-1, pxWidth, pxHeight, offsetX, offsetY - (dropY));
+                clipDecal(modelBatch, tmpCamera, renderable, clippedPixmap, cropX-1, cropY + dropY-1, pxWidth, pxHeight, offsetX, offsetY - (dropY) , fboWidth, fboHeight );
 
                 //if (angleY == 15) angleY = 30;
                 angleY += angleYStep;
@@ -921,7 +930,7 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
             PixmapIO.writePNG(Gdx.files.external(debugFilePath).child(saveName), clippedPixmap,0,false);
         }
 
-        fboPixmap.dispose();
+
 
         //OK, I'm not 100% sure what would be the best configuration for mipmaps and filters.
         //Feel free to experiment to find an optimal solution!

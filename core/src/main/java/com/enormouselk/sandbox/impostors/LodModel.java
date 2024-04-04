@@ -32,12 +32,11 @@ import com.badlogic.gdx.graphics.PixmapIO;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.VertexAttribute;
 import com.badlogic.gdx.graphics.VertexAttributes;
-import com.badlogic.gdx.graphics.g3d.Environment;
-import com.badlogic.gdx.graphics.g3d.Material;
-import com.badlogic.gdx.graphics.g3d.Model;
-import com.badlogic.gdx.graphics.g3d.ModelBatch;
-import com.badlogic.gdx.graphics.g3d.Renderable;
+import com.badlogic.gdx.graphics.g3d.*;
 import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute;
+import com.badlogic.gdx.graphics.g3d.shaders.BaseShader;
+import com.badlogic.gdx.graphics.g3d.utils.DefaultTextureBinder;
+import com.badlogic.gdx.graphics.g3d.utils.RenderContext;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Matrix4;
@@ -48,10 +47,12 @@ import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.BufferUtils;
 
 import net.mgsx.gltf.loaders.glb.GLBLoader;
+import net.mgsx.gltf.loaders.gltf.GLTFLoader;
 import net.mgsx.gltf.scene3d.scene.SceneAsset;
 import net.mgsx.gltf.scene3d.scene.SceneModel;
 
 import java.nio.IntBuffer;
+import java.util.Arrays;
 
 class LodModel {
 
@@ -72,7 +73,7 @@ class LodModel {
     // but that will take some more learning, a lot of testing and failures, and maybe eventually realizing
     // why it needs to be 16 floats and no less
 
-    private int decalIndex;
+    public int decalIndex;
     private float[] LODdistances;
 
     private boolean hasDecal;
@@ -84,9 +85,9 @@ class LodModel {
     public Renderable[] renderables;
 
     //public FloatBuffer[] offsets;
-    public BatchOfFloats[] offsets;
-    public int decalCount;
-    public int[] lodCount;
+    //public BatchOfFloats[] offsets;
+    //public int decalCount;
+    //public int[] lodCount;
 
     public float radius;
 
@@ -119,7 +120,9 @@ class LodModel {
     float angleTemp;
     float angleTempY;
 
-    private static final float MINIMUM_ANGLE_RAD = (float) (Math.PI / 6f);
+    public int[] debugCounters;
+
+    public static final float MINIMUM_ANGLE_RAD = (float) (Math.PI / 6f);
 
     private final static Material blankMaterial = new Material();
 
@@ -155,7 +158,8 @@ class LodModel {
             this.maxDecalInstances = maxInstances;
             //maxModelInstances = maxInstances;
             //below is what I'd actually like to have, but that will need more testing to ensure it works reliably
-            maxModelInstances = MathUtils.ceilPositive(maxInstances * decalDistance);
+            //maxModelInstances = MathUtils.ceilPositive(maxInstances * decalDistance);
+            maxModelInstances = maxInstances;
         }
         else {
             decalIndex = -1;
@@ -166,21 +170,21 @@ class LodModel {
 
         initLodDistances(decalDistance * maxDistance);
 
+        debugCounters = new int[LOD_MAX +1];
 
-
-        lodCount = new int[LOD_MAX];
-        offsets = new BatchOfFloats[LOD_MAX + 1];
+        //lodCount = new int[LOD_MAX];
+        //offsets = new BatchOfFloats[LOD_MAX + 1];
         q = new Quaternion();
         mat4 = new Matrix4();
         renderables = new Renderable[LOD_MAX + 1];
-        setupInstancedMeshes(settings.filename,environment);
+        setupInstancedMeshes(settings.filename,settings.filetype,environment);
     }
 
     public void dispose() {
         if (texture != null) texture.dispose();
         for (int i = 0; i < renderables.length; i++) {
             if (renderables[i] != null) {
-                renderables[i].shader.dispose();
+                if (renderables[i].shader != null) renderables[i].shader.dispose();
                 renderables[i].meshPart.mesh.dispose();
             }
             //if (offsets[i] != null) offsets[i].clear();
@@ -208,25 +212,6 @@ class LodModel {
         }
     }
 
-    public void reallocBuffers(float decalDistance)
-    {
-        int oldMax = maxModelInstances;
-        maxModelInstances = MathUtils.ceilPositive(maxDecalInstances * decalDistance);
-
-        if (maxModelInstances > oldMax)
-        {
-            for (int i = 0; i < decalIndex; i++) {
-                offsets[i].grow(maxModelInstances * 3);
-
-                renderables[i].meshPart.mesh.disableInstancedRendering();
-                renderables[i].meshPart.mesh.enableInstancedRendering(true,maxModelInstances,new VertexAttribute(VertexAttributes.Usage.Generic, 3, "i_worldTrans"));
-
-                //offsets[i] = new BatchOfFloats(maxModelInstances * 3); // 16 floats for mat4
-            }
-        }
-
-
-    }
 
     public int getDecalDistance()
     {
@@ -234,26 +219,9 @@ class LodModel {
         return -1;
     }
 
-    /**
-     * This must be called before updating the instance data
-     */
-    public void resetInstanceData() {
-        for (int i = 0; i < LOD_MAX; i++) {
-            lodCount[i] = 0;
-            offsets[i].position(0);
-        }
 
-        decalCount = 0;
-        if (hasDecal)
-            offsets[decalIndex].position(0);
-    }
 
-    /**
-     * This does the actual updating, calculating the LOD level to use, and determining the impostor image based on camera angle
-     * @param cameraPosition x,y,z
-     * @param cameraLocation2D x,z
-     * @param instancePosition x,y,z
-     */
+    /*
     public void updateInstanceData(Vector3 cameraPosition, Vector2 cameraLocation2D, Vector3 instancePosition)
     {
         distTemp = cameraPosition.dst(instancePosition);
@@ -327,17 +295,13 @@ class LodModel {
             //use the chosen LOD
 
             offsets[lodTemp].safePut(instancePosition);
-            /*
-            offsets[lodTemp].put(instancePosition.x);
-            offsets[lodTemp].put(instancePosition.y);
-            offsets[lodTemp].put(instancePosition.z);
-
-             */
             lodCount[lodTemp]++;
         }
     }
 
-    private int getLODlevel(float distance)
+    */
+
+    public int getLODlevel(float distance)
     {
         if (hasDecal) {
             for (int i = decalIndex - 1; i >= 0; i--) {
@@ -358,6 +322,8 @@ class LodModel {
     /**
      * Use this after updating the instance data, before rendering
      */
+
+    /*
     public void pushInstanceData()
     {
         if (hasDecal) {
@@ -374,25 +340,48 @@ class LodModel {
         }
     }
 
+     */
+
+
+
     /**
      * Render all the 3D instances and impostors using the given batch
      * @param batch quick, to the batchmobile!
+     * @param lodIndex LOD to render
+     * @param instanceData instance positions
      */
-    public void render(ModelBatch batch)
+    public void render(ModelBatch batch,  int lodIndex, float[] instanceData)
     {
-        for (int i = 0; i < LOD_MAX; i++) {
-            if (lodCount[i] > 0) {
-                batch.render(renderables[i]);
-            }
-        }
 
-        if (hasDecal) {
-            if (decalCount > 0) {
-                texture.bind(0);
-                batch.render(getImpostor());
-            }
-        }
+        /*
+        if (lodIndex == decalIndex)
+            texture.bind();
+
+         */
+
+        Renderable renderable = renderables[lodIndex];
+        renderable.meshPart.mesh.setInstanceData(instanceData);
+        batch.render(renderable);
+        debugCounters[lodIndex]+=instanceData.length;
+        //batch.flush();
     }
+
+    public void render(BaseShader shader,  int lodIndex, float[] instanceData)
+    {
+        Renderable renderable = renderables[lodIndex];
+        renderable.meshPart.mesh.setInstanceData(instanceData);
+
+        //shader.init(shader.program,renderable);
+        shader.render(renderable);
+
+        debugCounters[lodIndex]+=instanceData.length;
+    }
+
+    public void resetCounters()
+    {
+        Arrays.fill(debugCounters,0);
+    }
+
 
     public Renderable getImpostor()
     {
@@ -400,19 +389,125 @@ class LodModel {
     }
 
 
-    private void setupInstancedMeshes(String modelFile, Environment environment) {
-        Mesh lod0 = loadFromGLB(modelFile + "-lod0.glb");
-        setupInstancedMesh(lod0, 0, environment);
-        radius = lod0.calculateRadius(0,0,0);
+    private void setupInstancedMeshes(String modelFile, String fileType, Environment environment) {
+        if (fileType.equalsIgnoreCase("gltf")) {
+            Mesh lod0 = loadFromGLTF(modelFile + "lod0.gltf");
+            setupInstancedMesh(lod0, 0, environment);
+            radius = lod0.calculateRadius(0, 0, 0);
 
-        Mesh lod1 = loadFromGLB(modelFile + "-lod1.glb");
-        setupInstancedMesh(lod1, 1, environment);
+            Mesh lod1 = loadFromGLTF(modelFile + "lod1.gltf");
+            setupInstancedMesh(lod1, 1, environment);
 
-        Mesh lod2 = loadFromGLB(modelFile + "-lod2.glb");
-        setupInstancedMesh(lod2, 2, environment);
+            Mesh lod2 = loadFromGLTF(modelFile + "lod2.gltf");
+            setupInstancedMesh(lod2, 2, environment);
+        }
+        else
+        {
+            Mesh lod0 = loadFromGLB(modelFile + "lod0.glb");
+            setupInstancedMesh(lod0, 0, environment);
+            radius = lod0.calculateRadius(0, 0, 0);
+
+            Mesh lod1 = loadFromGLB(modelFile + "lod1.glb");
+            setupInstancedMesh(lod1, 1, environment);
+
+            Mesh lod2 = loadFromGLB(modelFile + "lod2.glb");
+            setupInstancedMesh(lod2, 2, environment);
+        }
 
         if (hasDecal) setupInstancedDecals(2);
     }
+
+    private Mesh loadFromGLTF(String filename) {
+        //SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal(filename));
+        SceneAsset sceneAsset = new GLTFLoader().load(Gdx.files.internal(filename));
+
+        Model model = sceneAsset.scene.model;
+        Mesh mesh = model.meshes.get(0);
+
+        //This is something I'm not 100% sure about, but what little I understand
+        //the .gltf format stores colors in linear space
+        //but my simple shaders want them in the good old rgb
+        //so I do the conversion beforehand to keep the shader happy!
+
+        //also, seems like Blender exports the vertex color as a Vec4 of unsigned shorts
+        //so we need to parse our floats to bytes and back
+
+        //29th of March 2024 : OK, or this is what I thought, but unfortunately
+        //this didn't work, so I need to experiment more later on.
+        //currently, the color conversion is handled in the shader
+        //which works, but feels silly to me to be coverting the colors over and over again
+        //each and every frame, each and every texel / fragment
+
+        /*
+        int coff = mesh.getVertexAttributes().getOffset(VertexAttributes.Usage.ColorUnpacked);
+        if (coff >= 0) {
+            int counter = coff;
+            //int stride = mesh.getVertexSize();
+            int stride = mesh.getVertexSize() / 4;
+            int max = mesh.getNumVertices() * stride;
+            //int max = mesh.getMaxVertices();
+
+            float[] vertData = new float[max];
+            vertData = mesh.getVertices(vertData);
+
+            while (counter < max) {
+
+                int raw1 = Float.floatToRawIntBits(vertData[counter]);
+                int raw2 = Float.floatToRawIntBits(vertData[counter+1]);
+
+                char col1 = (char) (raw1 & 0x000000000000FFFFL);
+                char col2 = (char) ((raw1 & 0x00000000FFFF0000L) >> 16);
+
+                char col3 = (char) (raw2 & 0x000000000000FFFFL);
+                char col4 = (char) ((raw2 & 0x00000000FFFF0000L) >> 16);
+
+                col1 = (char) Math.round(pow(col1,1.0 / 2.2)); // red
+                col2 = (char) Math.round(pow(col2,1.0 / 2.2)); // green
+                col3 = (char) Math.round(pow(col3,1.0 / 2.2)); // blue
+
+                //col4 = (char) Math.round(pow(col4,1.0 / 2.2));
+                //no need to touch the alpha
+
+                raw1 = col2 << 16 | col1;
+                raw2 = col4 << 16 | col3;
+
+                vertData[counter] = Float.intBitsToFloat(raw1);
+                vertData[counter+1] = Float.intBitsToFloat(raw2);
+
+
+
+                //vertData[counter] = (float) pow(vertData[counter], 1.0 / 2.2);
+                //vertData[counter] = 1f;
+                //vertData[counter + 1] = (float) pow(vertData[counter + 1], 1.0 / 2.2);
+                //vertData[counter + 2] = (float) pow(vertData[counter + 2], 1.0 / 2.2);
+
+                counter += stride;
+            }
+
+            mesh.setVertices(vertData);
+        }
+
+         */
+
+
+
+
+
+        //we dispose the rest of the sceneAsset. Mesh will be disposed in the LodModel.dispose()
+        if (sceneAsset.scenes != null) {
+            for (SceneModel scene : sceneAsset.scenes) {
+                scene.dispose();
+            }
+        }
+        if (sceneAsset.textures != null) {
+            for (Texture texture : sceneAsset.textures) {
+                texture.dispose();
+            }
+        }
+
+        return mesh;
+    }
+
 
     private Mesh loadFromGLB(String filename) {
         SceneAsset sceneAsset = new GLBLoader().load(Gdx.files.internal(filename));
@@ -506,21 +601,39 @@ class LodModel {
     }
 
     //a helper function to take a snapshot of the renderable, and clip the image to the pixmap
-    private void clipDecal(ModelBatch modelBatch, Camera tmpCamera, Renderable renderable, Pixmap fboPixmap, Pixmap clippedPixmap, int cropX, int cropY, int pxWidth, int pxHeight, int offsetX, int offsetY) {
+    private void clipDecal(Shader shader, RenderContext context, Camera tmpCamera, Renderable renderable, Pixmap clippedPixmap, int cropX, int cropY, int pxWidth, int pxHeight, int offsetX, int offsetY) {
         Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
         Gdx.gl.glClear(GL32.GL_COLOR_BUFFER_BIT | GL32.GL_DEPTH_BUFFER_BIT);
 
-        modelBatch.begin(tmpCamera);
-        modelBatch.render(renderable);
-        modelBatch.end();
+        shader.begin(tmpCamera,context);
+        shader.render(renderable);
+        shader.end();
+        //modelBatch.begin(tmpCamera);
+        //modelBatch.render(renderable);
+        //modelBatch.end();
 
         //renderable.shader.begin(tmpCamera,context);
         //renderable.shader.render(renderable);
         //renderable.shader.end();
 
-        fboPixmap = Pixmap.createFromFrameBuffer(0, 0, fboPixmap.getWidth(), fboPixmap.getHeight());
-        clippedPixmap.drawPixmap(fboPixmap, offsetX, offsetY, cropX, cropY, pxWidth, pxHeight);
+        Pixmap fboPixmap = Pixmap.createFromFrameBuffer(cropX, cropY, pxWidth, pxHeight);
+        clippedPixmap.drawPixmap(fboPixmap, offsetX, offsetY);
+        fboPixmap.dispose();
+
     }
+
+    //30.3.2024 quick copypaste from Discord, TEt code
+
+    /*
+    public static Pixmap createFromFrameBuffer(int x, int y, int w, int h) {
+        Gdx.gl.glPixelStorei(GL20.GL_PACK_ALIGNMENT, 1);
+        Pixmap pixmap = new Pixmap(new Gdx2DPixmap(w, h, Gdx2DPixmap.GDX2D_FORMAT_RGBA8888));
+        ByteBuffer pixels = pixmap.getPixels();
+        Gdx.gl.glReadPixels(x, y, w, h, GL20.GL_RGBA, GL20.GL_UNSIGNED_BYTE, pixels);
+        return pixmap;
+    }
+
+     */
 
 
     /**
@@ -639,15 +752,18 @@ class LodModel {
         tmpCamera.lookAt(instanceLocation);
         tmpCamera.update();
 
+        float[] offsets = new float[3];
         //we place one instance of the model, at world position 0,0,0
-        offsets[fromIndex].position(0);
-        offsets[fromIndex].put(0,0,0);
-        renderable.meshPart.mesh.setInstanceData(offsets[fromIndex].data,0, 3);
+        offsets[0] = 0;
+        offsets[1] = 0;
+        offsets[2] = 0;
+        renderable.meshPart.mesh.setInstanceData(offsets,0, 3);
 
 
-        ModelBatch modelBatch = new ModelBatch(instancedShaderProvider);
+        //ModelBatch modelBatch = new ModelBatch(instancedShaderProvider);
         FrameBuffer fbo = new FrameBuffer(Pixmap.Format.RGBA8888, fboWidth, fboHeight, true);
         fbo.begin();
+
 
         Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
         Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
@@ -657,9 +773,20 @@ class LodModel {
         Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
         Gdx.gl.glClear(GL32.GL_COLOR_BUFFER_BIT | GL32.GL_DEPTH_BUFFER_BIT);
 
-        modelBatch.begin(tmpCamera);
-        modelBatch.render(renderable);
-        modelBatch.end();
+
+        BaseShader shader = instancedShaderProvider.createInstancedShader(renderable);
+        shader.init();
+
+        RenderContext context = new RenderContext(new DefaultTextureBinder(DefaultTextureBinder.LRU, 1));
+
+        //modelBatch.begin(tmpCamera);
+        shader.begin(tmpCamera,context);
+        shader.render(renderable);
+        shader.end();
+        //modelBatch.render(renderable,shader);
+        //modelBatch.end();
+
+
 
         Pixmap fboPixmap = Pixmap.createFromFrameBuffer(0, 0, fboWidth, fboHeight);
 
@@ -698,6 +825,8 @@ class LodModel {
         float angleX = 270;
         angleXStep = 360f / stepsY;
 
+        fboPixmap.dispose();
+
         for (int dir = 0; dir < stepsY; dir++) {
 
             offsetX = 0;
@@ -726,7 +855,7 @@ class LodModel {
                 int dropY = -round(sine * pxWidth / 2);
 
                 //after the camera has been rotated we take a snapshot and store it in the pixmap
-                clipDecal(modelBatch, tmpCamera, renderable, fboPixmap, clippedPixmap, cropX, cropY + dropY, pxWidth, pxHeight, offsetX, offsetY - (dropY));
+                clipDecal(shader, context, tmpCamera, renderable, clippedPixmap, cropX, cropY + dropY, pxWidth, pxHeight, offsetX, offsetY - (dropY));
 
                 //if (angleY == 15) angleY = 30;
                 angleY += angleYStep;
@@ -744,7 +873,7 @@ class LodModel {
             PixmapIO.writePNG(Gdx.files.external(debugFilePath).child(saveName), clippedPixmap,0,false);
         }
 
-        fboPixmap.dispose();
+
 
         //OK, I'm not 100% sure what would be the best configuration for mipmaps and filters.
         //Feel free to experiment to find an optimal solution!
@@ -755,7 +884,8 @@ class LodModel {
 
         fbo.end();
 
-        modelBatch.dispose();
+        shader.dispose();
+        //modelBatch.dispose();
         fbo.dispose();
         clippedPixmap.dispose();
 
@@ -837,15 +967,22 @@ class LodModel {
         //OK we have our mesh, now we enable instancing so that we can draw lots of them!
 
         mesh.enableInstancedRendering(true, maxDecalInstances,
+                new VertexAttribute(VertexAttributes.Usage.Generic, 3, "i_worldTrans"));
+
+        //mesh.setInstanceData(new float[maxDecalInstances*3]);
+        /*
+        mesh.enableInstancedRendering(true, maxDecalInstances,
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 0),
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 1),
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 2),
             new VertexAttribute(VertexAttributes.Usage.Generic, 4, "i_worldTrans", 3),
             new VertexAttribute(VertexAttributes.Usage.TextureCoordinates, 2, "i_uvOffset"));
+            wwwwwwwwwww
+         */
 
 
         // Create offset FloatBuffer that will hold matrix4 and uv offset for each instance to pass to shader
-        offsets[decalIndex] = new BatchOfFloats(maxDecalInstances * DECAL_INSTANCE_DATA_SIZE); // 16 floats for mat4
+        //offsets[decalIndex] = new BatchOfFloats(maxDecalInstances * DECAL_INSTANCE_DATA_SIZE); // 16 floats for mat4
         //offsets[decalIndex] = BufferUtils.newFloatBuffer(maxDecalInstances * DECAL_INSTANCE_DATA_SIZE); // 16 floats for mat4
 
         //((Buffer) offsets[decalIndex]).position(0);
@@ -862,8 +999,8 @@ class LodModel {
         decalRenderable.shader = instancedShaderProvider.createDecalShader(decalRenderable);
         decalRenderable.shader.init();
         TextureAttribute attr = new TextureAttribute(TextureAttribute.Diffuse, texture);
-        decalRenderable.material = blankMaterial;
-        //decalRenderable.material = new Material(attr);
+        //decalRenderable.material = blankMaterial;
+        decalRenderable.material = new Material(attr);
 
         renderables[decalIndex] = decalRenderable;
     }
@@ -885,11 +1022,12 @@ class LodModel {
             new VertexAttribute(VertexAttributes.Usage.Generic, 3, "i_worldTrans"));
          */
 
-        offsets[lodIndex] = new BatchOfFloats(maxModelInstances * 3); // 16 floats for mat4
+        //offsets[lodIndex] = new BatchOfFloats(maxModelInstances * 3); // 16 floats for mat4
         //offsets[lodIndex] = BufferUtils.newFloatBuffer(maxModelInstances * 3); // 16 floats for mat4
 
         //((Buffer) offsets[lodIndex]).position(0);
-        //mesh.setInstanceData(offsets[lodIndex]);
+
+        mesh.setInstanceData(new float[maxModelInstances*3]);
 
         int indices = mesh.getNumIndices();
 
@@ -897,8 +1035,9 @@ class LodModel {
         renderable.meshPart.set("Tree", mesh, 0, indices, GL32.GL_TRIANGLES);
         renderable.environment = environment;
         renderable.worldTransform.idt();
-        renderable.shader = instancedShaderProvider.createShader(renderable);
-        renderable.shader.init();
+        //renderable.shader = instancedShaderProvider.getShader(renderable);
+        //renderable.shader = instancedShaderProvider.createShader(renderable);
+        //renderable.shader.init();
 
         //for the demo the actual 3D models are very simple, so we just assign an empty material for them
         //the shader will anyway use the vertex colors instead of a material

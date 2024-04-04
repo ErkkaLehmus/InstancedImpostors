@@ -25,14 +25,14 @@ public class MainMenu implements Screen {
 
     private Stage stage;
 
-    private final int defaultWorldSize = 100;
-    private final int maxWorldSize = 500;
+    private final int defaultWorldSize = 16;
+    private final int maxWorldSize = 128;
     private final int defaultTreeDensity = 5;
     private final int maxTreeDensity = 9;
     private final int defaultImpostorDistance = 50;
-    private final int defaultInstanceBufferSize = 4000;
-    private final int minInstanceBufferSize = 400;
-    private final int maxInstanceBufferSize = 32000;
+    private final int defaultInstanceBufferSize = 64;
+    private final int minInstanceBufferSize = 8;
+    private final int maxInstanceBufferSize = 512;
 
     private final String densityTemplate = "produces total %,d trees";
     private final String sizeTemplate = "%1$,d m x %1$,d m";
@@ -95,9 +95,9 @@ public class MainMenu implements Screen {
         //window = new VisWindow("--- INSTANCED IMPOSTORS ---");
         window = new VisTable(false);
 
-        sliderWorldSize = new VisSlider(20,maxWorldSize,10,false);
-        sliderWorldSize.setValue(1000);
-        legendWorldSize = new VisLabel(String.format(defaultLocale,sizeTemplate,maxWorldSize*10));
+        sliderWorldSize = new VisSlider(1,maxWorldSize,1,false);
+        sliderWorldSize.setValue(defaultWorldSize);
+        legendWorldSize = new VisLabel(String.format(defaultLocale,sizeTemplate,defaultWorldSize * defaultInstanceBufferSize * 10));
         //final VisLabel legendWorldSize = new VisLabel(" ");
 
         sliderTreeDensity = new VisSlider(1,maxTreeDensity,1,false);
@@ -109,7 +109,7 @@ public class MainMenu implements Screen {
         sliderImpostorDistance.setValue(defaultImpostorDistance);
         legendImpostorDistance = new VisLabel(String.format(defaultLocale,distanceTemplate,defaultImpostorDistance));
 
-        sliderInstanceBufferSize = new VisSlider(minInstanceBufferSize,maxInstanceBufferSize,100,false);
+        sliderInstanceBufferSize = new VisSlider(minInstanceBufferSize,maxInstanceBufferSize,8,false);
         sliderInstanceBufferSize.setValue(defaultInstanceBufferSize);
         legendInstanceBufferSize = new VisLabel(String.format(defaultLocale,amountTemplate,defaultInstanceBufferSize));
 
@@ -120,7 +120,9 @@ public class MainMenu implements Screen {
         sliderWorldSize.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                int worldSizeInTiles = (int) sliderWorldSize.getValue();
+                int worldSizeInChunks = (int) sliderWorldSize.getValue();
+                int chunkSize = (int) sliderInstanceBufferSize.getValue();
+                int worldSizeInTiles = worldSizeInChunks * chunkSize;
                 int worldSize = worldSizeInTiles*10;
                 int treeDensity = (int) sliderTreeDensity.getValue();
                 legendWorldSize.setText(String.format(defaultLocale,sizeTemplate,worldSize));
@@ -131,7 +133,9 @@ public class MainMenu implements Screen {
         sliderTreeDensity.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                int worldSizeInTiles = (int) sliderWorldSize.getValue();
+                int worldSizeInChunks = (int) sliderWorldSize.getValue();
+                int chunkSize = (int) sliderInstanceBufferSize.getValue();
+                int worldSizeInTiles = worldSizeInChunks * chunkSize;
                 int treeDensity = (int) sliderTreeDensity.getValue();
                 legendTreeDensity.setText(String.format(defaultLocale,densityTemplate,(worldSizeInTiles * worldSizeInTiles * treeDensity)));
             }
@@ -148,6 +152,13 @@ public class MainMenu implements Screen {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 legendInstanceBufferSize.setText(String.format(defaultLocale,amountTemplate,(int) sliderInstanceBufferSize.getValue()));
+                int worldSizeInChunks = (int) sliderWorldSize.getValue();
+                int chunkSize = (int) sliderInstanceBufferSize.getValue();
+                int worldSizeInTiles = worldSizeInChunks * chunkSize;
+                int worldSize = worldSizeInTiles*10;
+                int treeDensity = (int) sliderTreeDensity.getValue();
+                legendWorldSize.setText(String.format(defaultLocale,sizeTemplate,worldSize));
+                legendTreeDensity.setText(String.format(defaultLocale,densityTemplate,(worldSizeInTiles * worldSizeInTiles * treeDensity)));
             }
         });
 
@@ -213,21 +224,23 @@ public class MainMenu implements Screen {
         window.add("If you plan anything like a 3D game with lots of objects you can try different parameters ").colspan(3).row();
         window.add("to find out how much stuff there can be without impairing the performance.").colspan(3).row();
 
-        window.add("World size : ").right().padTop(32);
-        window.add(sliderWorldSize).padTop(32);
-        window.add(legendWorldSize).left().padTop(32).row();
+        window.add("Tree density : ").right().padTop(32);
+        window.add(sliderTreeDensity).padTop(32);
+        window.add(legendTreeDensity).left().padTop(32).row();
 
-        window.add("Tree density : ").right();
-        window.add(sliderTreeDensity);
-        window.add(legendTreeDensity).left().row();
+        window.add("Chunk size : ").right();
+        window.add(sliderInstanceBufferSize);
+        window.add(legendInstanceBufferSize).left().row();
+
+        window.add("World size : ").right();
+        window.add(sliderWorldSize);
+        window.add(legendWorldSize).left().row();
 
         window.add("Impostor distance : ").right();
         window.add(sliderImpostorDistance);
         window.add(legendImpostorDistance).left().row();
 
-        window.add("Instance buffer size : ").right();
-        window.add(sliderInstanceBufferSize);
-        window.add(legendInstanceBufferSize).left().row();
+
 
         window.add("Texture size :").right();
         window.add(selectTextureSize).left().row();
