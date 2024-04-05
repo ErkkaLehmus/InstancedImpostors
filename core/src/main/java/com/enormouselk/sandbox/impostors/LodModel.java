@@ -17,7 +17,6 @@
 
 package com.enormouselk.sandbox.impostors;
 
-import static com.badlogic.gdx.math.MathUtils.HALF_PI;
 import static com.badlogic.gdx.math.MathUtils.round;
 import static com.badlogic.gdx.math.MathUtils.sinDeg;
 import static java.lang.Math.pow;
@@ -39,9 +38,7 @@ import com.badlogic.gdx.graphics.g3d.utils.DefaultTextureBinder;
 import com.badlogic.gdx.graphics.g3d.utils.RenderContext;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Quaternion;
-import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.utils.BufferUtils;
@@ -54,7 +51,7 @@ import net.mgsx.gltf.scene3d.scene.SceneModel;
 import java.nio.IntBuffer;
 import java.util.Arrays;
 
-class LodModel {
+class LodModel implements BatchOfFloats.FloatStreamer {
 
     private static final String debugFilePath = null;
     //private static final String debugFilePath = "tmp/lodtest";
@@ -104,14 +101,18 @@ class LodModel {
     int stepsY;
     int stepsX;
 
+    /*
     int tmpStepX;
     int tmpStepY;
     float tmpFloat;
+
+     */
 
     int LOD_MAX;
     int maxDecalInstances;
     int maxModelInstances;
 
+    /*
     private Quaternion q;
     private Matrix4 mat4;
     private float distTemp;
@@ -120,11 +121,21 @@ class LodModel {
     float angleTemp;
     float angleTempY;
 
+     */
+
+    public DecalData decalData;
+
     public int[] debugCounters;
+
+    private BatchOfFloats[] instanceData;
 
     public static final float MINIMUM_ANGLE_RAD = (float) (Math.PI / 6f);
 
     private final static Material blankMaterial = new Material();
+    
+    private InstancedShaderProviderGPU.InstancedShader instancedShader;
+    private InstancedShaderProviderGPU.ImpostorShader impostorShader;
+    private InstancedShaderProviderGPU.ImpostorShaderGPUheavy impostorShaderGPUheavy;
 
 
     /**
@@ -144,9 +155,14 @@ class LodModel {
      * @param environment environment
      * @param shaderProvider shaderProvider
      */
-    public LodModel(LodSettings settings, int maxInstances, float decalDistance, float maxDistance, int textureSize, Environment environment, InstancedShaderProvider shaderProvider) {
+    public LodModel(LodSettings settings, int maxInstances, float decalDistance, float maxDistance, int textureSize, int bufferSize, Environment environment, InstancedShaderProviderGPU shaderProvider) {
         this.ID = settings.ID;
         this.instancedShaderProvider = shaderProvider;
+        
+        this.instancedShader = shaderProvider.instancedShader;
+        this.impostorShader = shaderProvider.impostorShader;
+        this.impostorShaderGPUheavy = shaderProvider.impostorShaderGPUheavy;
+        
         LOD_MAX = settings.lodMax;
 
         this.hasDecal = settings.generateImpostor;
@@ -155,17 +171,20 @@ class LodModel {
             int maxTextureSize = getMaxTextureSize();
             if (textureSize > maxTextureSize) textureSize = maxTextureSize;
             this.textureSize = textureSize;
-            this.maxDecalInstances = maxInstances;
+            this.maxDecalInstances = bufferSize / 3;
+            //this.maxDecalInstances = maxInstances;
             //maxModelInstances = maxInstances;
             //below is what I'd actually like to have, but that will need more testing to ensure it works reliably
             //maxModelInstances = MathUtils.ceilPositive(maxInstances * decalDistance);
-            maxModelInstances = maxInstances;
+            //maxModelInstances = maxInstances;
+            maxModelInstances = bufferSize / 3;
         }
         else {
             decalIndex = -1;
             this.textureSize = 0;
             this.maxDecalInstances = 0;
-            maxModelInstances = maxInstances;
+            maxModelInstances = bufferSize / 3;
+            //maxModelInstances = maxInstances;
         }
 
         initLodDistances(decalDistance * maxDistance);
@@ -174,9 +193,16 @@ class LodModel {
 
         //lodCount = new int[LOD_MAX];
         //offsets = new BatchOfFloats[LOD_MAX + 1];
-        q = new Quaternion();
-        mat4 = new Matrix4();
+        //q = new Quaternion();
+        //mat4 = new Matrix4();
         renderables = new Renderable[LOD_MAX + 1];
+
+        instanceData = new BatchOfFloats[LOD_MAX + 1];
+        for (int i = 0; i < instanceData.length; i++) {
+            instanceData[i] = new BatchOfFloats(i,bufferSize,this);
+
+        }
+
         setupInstancedMeshes(settings.filename,settings.filetype,environment);
     }
 
@@ -376,6 +402,67 @@ class LodModel {
 
         debugCounters[lodIndex]+=instanceData.length;
     }
+
+    public void renderHeavy(InstancedShaderProviderGPU.ImpostorShaderGPUheavy shader, int lodIndex, float[] instanceData)
+    {
+        Renderable renderable = renderables[lodIndex];
+        renderable.meshPart.mesh.setInstanceData(instanceData);
+
+        //shader.init(shader.program,renderable);
+        shader.render(renderable,decalData);
+
+        debugCounters[lodIndex]+=instanceData.length;
+    }
+
+    @Override
+    public void flush(int id, boolean flushBatch) {
+        if (id<decalIndex)
+        {
+            render(instancedShader,id,instanceData[id].data);
+        }
+        else
+        {
+            renderHeavy(impostorShaderGPUheavy,id,instanceData[id].data);
+        }
+    }
+    
+    public void clearInstanceData()
+    {
+        for (int i = 0; i < instanceData.length; i++) {
+            instanceData[i].clear();
+        }
+    }
+
+    public void flushInstanceData()
+    {
+        for (int id = 0; id < LOD_MAX; id++) {
+            
+            BatchOfFloats instanceDatum = instanceData[id];
+            if (instanceDatum.isEmpty()) continue;
+            render(instancedShader,id,instanceData[id].getData());
+        }
+    }
+
+    public void flushInstanceData(int index)
+    {
+        BatchOfFloats instanceDatum = instanceData[index];
+        if (instanceDatum.isEmpty()) return;
+
+        if (index<decalIndex)
+        {
+            render(instancedShader,index,instanceData[index].getData());
+        }
+        else
+        {
+            renderHeavy(impostorShaderGPUheavy,index,instanceData[index].getData());
+        }
+    }
+    
+    public void addInstanceData(int index,float[] data)
+    {
+        instanceData[index].put(data);
+    }
+    
 
     public void resetCounters()
     {
@@ -1003,6 +1090,8 @@ class LodModel {
         decalRenderable.material = new Material(attr);
 
         renderables[decalIndex] = decalRenderable;
+
+        this.decalData = new DecalData(uvWidth,uvHeight,stepsX,stepsY,angleYStep*MathUtils.degRad,angleXStep*MathUtils.degRad);
     }
 
 
@@ -1051,126 +1140,27 @@ class LodModel {
         return buffer.get(0);
     }
 
-    /**
-     * A custom class to replace FloatBuffer
-     * Surely this could be optimized ?
-     */
-    private static class BatchOfFloats
+
+    public class DecalData
     {
-        public float[] data;
-        public int capacity;
-        public int position;
+        float[] uvSize;
+        float[] uvSteps;
+        float[] uvStepSize;
 
-        public BatchOfFloats(int capacity) {
-            this.capacity = capacity;
-            data = new float[capacity];
+        public DecalData(float uvSizeX,float uvSizeY,float uvStepsX,float uvStepsY,float uvStepSizeX,float uvStepSizeY) {
+            uvSize = new float[2];
+            uvSize[0] = uvSizeX;
+            uvSize[1] = uvSizeY;
+
+            uvSteps = new float[2];
+            uvSteps[0] = uvStepsX;
+            uvSteps[1] = uvStepsY;
+
+            uvStepSize = new float[2];
+            uvStepSize[0] = uvStepSizeX;
+            uvStepSize[1] = uvStepSizeY;
+
         }
-
-        public void position(int newPos)
-        {
-            this.position = newPos;
-        }
-
-        public void put(float val)
-        {
-            data[position] = val;
-            position++;
-        }
-
-        public void put(float val1,float val2,float val3)
-        {
-            put(val1);
-            put(val2);
-            put(val3);
-        }
-
-        public void put(float[] values)
-        {
-            for (float value : values) {
-                put(value);
-            }
-        }
-
-        public void safePut(float val)
-        {
-            if (position >= capacity)
-            {
-                grow(round(capacity * 1.25f));
-            }
-            data[position] = val;
-            position++;
-        }
-
-        public void safePut(float val1,float val2,float val3)
-        {
-            if (position+3 >= capacity)
-            {
-                grow(round(capacity * 1.25f));
-            }
-            data[position] = val1;
-            position++;
-            data[position] = val2;
-            position++;
-            data[position] = val3;
-            position++;
-        }
-
-        public void safePut(Vector3 values)
-        {
-            if (position+3 >= capacity)
-            {
-                grow(round(capacity * 1.25f));
-            }
-            data[position] = values.x;
-            position++;
-            data[position] = values.y;
-            position++;
-            data[position] = values.z;
-            position++;
-        }
-
-        public void safePut(float[] values)
-        {
-            if (position+values.length >= capacity)
-            {
-                grow(round(capacity * 1.25f));
-            }
-            for (float value : values) {
-                put(value);
-            }
-        }
-
-        /**
-         * Dynamically grow capacity, keeping current content.
-         * @param newCapacity new capacity
-         */
-        public void grow(int newCapacity)
-        {
-            if (newCapacity <= capacity) return;
-            float[] newData = new float[newCapacity];
-            System.arraycopy(data, 0, newData, 0, data.length);
-            data = newData;
-            capacity = newCapacity;
-        }
-
-        /**
-         * Grow capacity, destroying content
-         * Use only for an empty container!
-         * @param newCapacity new capacity
-         */
-        public void setCapacity(int newCapacity)
-        {
-            if (newCapacity <= capacity) return;
-            data = new float[newCapacity];
-            capacity = newCapacity;
-            position = 0;
-        }
-
-        public void clear()
-        {
-            position = 0;
-        }
-
     }
 
 

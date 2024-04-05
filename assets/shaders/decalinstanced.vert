@@ -18,11 +18,11 @@ void main () {
     TexCoords = a_texCoords0;
 
     #ifdef CPU
-    uvOffset = i_uvOffset;
-    gl_Position = u_projViewTrans * i_worldTrans * vec4(a_position, 1.0);
+      uvOffset = i_uvOffset;
+      gl_Position = u_projViewTrans * i_worldTrans * vec4(a_position, 1.0);
     #else
-    uvOffset = u_uvOffset;
-    vec4 position_corrected = u_impostorRotationMatrix * vec4(a_position.x,a_position.y+u_moveY,a_position.z,0);
-    gl_Position = u_projViewTrans * (position_corrected + vec4(i_worldTrans, 1.0));
+      uvOffset = u_uvOffset;
+      vec4 position_corrected = u_impostorRotationMatrix * vec4(a_position.x,a_position.y+u_moveY,a_position.z,0);
+      gl_Position = u_projViewTrans * (position_corrected + vec4(i_worldTrans, 1.0));
     #endif
 }

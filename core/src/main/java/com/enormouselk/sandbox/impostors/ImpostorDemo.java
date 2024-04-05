@@ -48,15 +48,14 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
        if (mainMenu != null) mainMenu.dispose();
     }
 
-    public void startDemo(Array<LodSettings> settings, float worldSize, float treeDensity, float decalDistance, int textureSize, int instanceBufferSize, boolean showTerrain)
+    public void startDemo(Array<LodSettings> settings, float worldSize, float treeDensity, float decalDistance, int textureSize, int chunkSize,int instanceBufferSize, boolean showTerrain)
     {
         boolean useOptimized = settings.get(0).filetype.equalsIgnoreCase("gltf");
         mainMenu.clear(useOptimized);
         if (demoScreen == null) demoScreen = new DemoScreen(ImpostorDemo.this);
 
 
-
-        demoScreen.initGraphics(ImpostorDemo.this,settings,  (int)worldSize,(int)treeDensity,decalDistance,textureSize, instanceBufferSize, showTerrain);
+        demoScreen.initGraphics(ImpostorDemo.this,settings,  (int)worldSize,(int)treeDensity,decalDistance,textureSize, chunkSize, instanceBufferSize, showTerrain);
         //demoScreen.initGraphics(ImpostorDemo.this,settings,  (int)worldSize,(int)treeDensity,decalDistance,textureSize, MathUtils.round((float) Math.sqrt(instanceBufferSize/treeDensity)), showTerrain);
         handleDemoMessages = true;
     }
@@ -65,8 +64,8 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
     public void finished() {
         handleDemoMessages = false;
         setScreen(demoScreen);
-        mainMenu.dispose();
-        mainMenu = null;
+        //mainMenu.dispose();
+        //mainMenu = null;
         demoScreen.startDemo();
     }
 

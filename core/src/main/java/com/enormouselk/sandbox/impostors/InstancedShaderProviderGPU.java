@@ -2,7 +2,6 @@ package com.enormouselk.sandbox.impostors;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.GL32;
 import com.badlogic.gdx.graphics.g3d.Environment;
 import com.badlogic.gdx.graphics.g3d.Renderable;
@@ -26,8 +25,9 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
     String vertexShader;
     String fragmentShader;
 
-    BaseShader instancedShader;
-    BaseShader plainShader;
+    InstancedShaderProviderGPU.InstancedShader instancedShader;
+    InstancedShaderProviderGPU.ImpostorShader impostorShader;
+    InstancedShaderProviderGPU.ImpostorShaderGPUheavy impostorShaderGPUheavy;
 
 
     public InstancedShaderProviderGPU(DefaultShader.Config config) {
@@ -408,6 +408,75 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
             program.setUniformf("u_moveY", decalTransform.moveY);
             program.setUniform2fv("u_uvOffset", decalTransform.uvOffset,0,2);
             program.setUniformi("u_texture", 0);
+            super.render(renderable);
+        }
+
+        @Override
+        public int compareTo(Shader other) {
+            return 0;
+        }
+
+        @Override
+        public boolean canRender(Renderable instance) {
+            return true;
+        }
+    }
+
+    public static class ImpostorShaderGPUheavy extends BaseShader
+    {
+        @Override
+        public void begin(Camera camera, RenderContext context) {
+            program.bind();
+            program.setUniformMatrix("u_projViewTrans", camera.combined);
+            float[] camPos = new float[3];
+            camPos[0] = camera.position.x;
+            camPos[1] = camera.position.y;
+            camPos[2] = camera.position.z;
+            program.setUniform3fv("u_camPos", camPos,0,3);
+            context.setDepthTest(GL32.GL_LESS);
+            //program.setUniformMatrix("u_impostorRotationMatrix", renderable.worldTransform);
+
+
+
+            //context.setDepthTest(GL30.GL_LEQUAL);
+        }
+
+        @Override
+        public void init() {
+            ShaderProgram.prependVertexCode = "#version 300 es\n";
+            ShaderProgram.prependFragmentCode = "#version 300 es\n";
+
+
+            program = new ShaderProgram(Gdx.files.internal("shaders/decalinstancedGPUheavy.vert"),
+                    Gdx.files.internal("shaders/decalinstanced.frag"));
+
+            if (!program.isCompiled()) {
+                throw new GdxRuntimeException("Shader compile error: " + program.getLog());
+            }
+            //init(program, renderable);
+
+        }
+
+
+        public void render(Renderable renderable, LodModel.DecalData decalData) {
+
+            /*
+            MapChunk.DecalTransform decalTransform = (MapChunk.DecalTransform) renderable.userData;
+
+            program.setUniformMatrix("u_impostorRotationMatrix", decalTransform.transform);
+            program.setUniformf("u_moveY", decalTransform.moveY);
+            program.setUniform2fv("u_uvOffset", decalTransform.uvOffset,0,2);
+
+             */
+
+            //MapChunk.DecalTransform decalTransform = (MapChunk.DecalTransform) renderable.userData;
+            //program.setUniformf("u_moveY", decalTransform.moveY);
+            program.setUniformf("u_moveY", 12f);
+
+            program.setUniformi("u_texture", 0);
+            program.setUniform2fv("u_uvStepSize",decalData.uvStepSize,0,2);
+            program.setUniform2fv("u_uvSteps",decalData.uvSteps,0,2);
+            program.setUniform2fv("u_uvSize",decalData.uvSize,0,2);
             super.render(renderable);
         }
 

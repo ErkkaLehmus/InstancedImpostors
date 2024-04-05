@@ -2,6 +2,8 @@ package com.enormouselk.sandbox.impostors;
 
 import com.badlogic.gdx.math.Vector3;
 
+import java.util.Arrays;
+
 /**
  * A custom class to replace FloatBuffer
  * Surely this could be optimized ?
@@ -34,6 +36,8 @@ public class BatchOfFloats {
         if (position >= capacity) {
             if (streamer != null)
                 streamer.flush(id,true);
+
+            clear();
         }
 
         data[position] = val;
@@ -53,10 +57,50 @@ public class BatchOfFloats {
     }
 
     public void put(float[] values) {
-        for (float value : values) {
-            put(value);
+
+        int overFlow = values.length - (capacity-position);
+
+        if (overFlow > 0) {
+            int remaining = capacity-position;
+            int fromIndex = values.length-overFlow;
+            int toBeCopied = overFlow;
+            if (toBeCopied > remaining) toBeCopied = remaining;
+
+            while (toBeCopied > 0)
+            {
+                System.arraycopy(values,fromIndex,data,position,toBeCopied);
+                if (streamer != null)
+                    streamer.flush(id,true);
+                fromIndex+=toBeCopied;
+
+                toBeCopied = values.length-fromIndex;
+
+                if (toBeCopied < capacity) break;
+                toBeCopied = capacity;
+
+            }
+
+            clear();
+            if (toBeCopied > 0) {
+                //data = Arrays.copyOfRange(values, fromIndex, fromIndex+capacity);
+                System.arraycopy(values,fromIndex,data,position,toBeCopied);
+                //data = Arrays.copyOfRange(values, fromIndex, toBeCopied);
+                position = values.length - fromIndex;
+            }
+
+        }
+        else
+        {
+            System.arraycopy(values,0,data,position,values.length);
+            position += values.length;
         }
     }
+
+    public float[] getData()
+    {
+        return Arrays.copyOfRange(data,0,position);
+    }
+
 
     public void clear() {
         position = 0;

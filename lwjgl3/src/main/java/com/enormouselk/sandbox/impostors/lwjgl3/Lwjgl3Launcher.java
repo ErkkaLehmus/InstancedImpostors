@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
+import com.badlogic.gdx.graphics.glutils.HdpiMode;
 import com.enormouselk.sandbox.impostors.ImpostorDemo;
 
 /** Launches the desktop (LWJGL3) application. */
@@ -43,10 +44,11 @@ public class Lwjgl3Launcher {
 
         configuration.setDecorated(true);
         configuration.setResizable(true);
+        //configuration.setHdpiMode(HdpiMode.Pixels);
         //there are probably default values, but setting them just to be sure
 
         Graphics.DisplayMode displayMode = Lwjgl3ApplicationConfiguration.getDisplayMode();
-        configuration.setWindowedMode(displayMode.width-64, displayMode.height-64);
+        configuration.setWindowedMode((int) (displayMode.width*0.8f), (int) (displayMode.height*+0.8f));
 
         configuration.setWindowIcon("libgdx128.png", "libgdx64.png", "libgdx32.png", "libgdx16.png");
         return configuration;

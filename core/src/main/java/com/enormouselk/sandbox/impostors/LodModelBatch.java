@@ -383,7 +383,7 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
 
         }
 
-        offsets[id].clear();
+        //offsets[id].clear();
     }
 
     /**

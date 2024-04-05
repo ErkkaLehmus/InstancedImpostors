@@ -8,6 +8,8 @@ import java.util.HashMap;
 import static com.badlogic.gdx.math.MathUtils.HALF_PI;
 import static com.badlogic.gdx.math.MathUtils.round;
 import static com.enormouselk.sandbox.impostors.LodModel.MINIMUM_ANGLE_RAD;
+import static java.lang.Math.abs;
+import static java.lang.Math.min;
 
 public class MapChunk {
 
@@ -75,7 +77,9 @@ public class MapChunk {
 
     public float getDistance(Vector3 from)
     {
-        distanceFromCamera = from.dst(center);
+        distanceFromCamera = abs(from.dst(boundingBox.max));
+        distanceFromCamera = min(abs(from.dst(center)),abs(from.dst(boundingBox.max)));
+        distanceFromCamera = min(abs(from.dst(boundingBox.min)),abs(from.dst(boundingBox.max)));
         return distanceFromCamera;
     }
 
@@ -119,7 +123,8 @@ public class MapChunk {
         //and in between we adjust in between
 
         decalTransform.transform = mat4;
-        decalTransform.moveY = MathUtils.sin(HALF_PI + angleTempY) * lodModel.decalWorldHalfHeight;
+        //decalTransform.moveY = MathUtils.sin(HALF_PI + angleTempY) * lodModel.decalWorldHalfHeight;
+        decalTransform.moveY = lodModel.decalWorldHalfHeight;
 
         decalTransform.uvOffset[0] = tmpFloat;
         //offsets[decalIndex].put(tmpFloat);

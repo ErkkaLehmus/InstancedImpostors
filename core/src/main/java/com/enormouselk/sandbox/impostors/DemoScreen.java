@@ -11,7 +11,6 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g3d.*;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
-import com.badlogic.gdx.graphics.g3d.shaders.BaseShader;
 import com.badlogic.gdx.graphics.g3d.shaders.DefaultShader;
 import com.badlogic.gdx.graphics.g3d.utils.DefaultTextureBinder;
 import com.badlogic.gdx.graphics.g3d.utils.FirstPersonCameraController;
@@ -45,7 +44,7 @@ public class DemoScreen implements Screen {
     private boolean disableRendering;
 
     private GLProfiler profiler;
-    private InstancedShaderProvider instancedShaderProvider;
+    private InstancedShaderProviderGPU instancedShaderProvider;
     private Environment environment;
 
     private Terrain terrain;
@@ -55,6 +54,7 @@ public class DemoScreen implements Screen {
     private RenderContext context;
     private InstancedShaderProviderGPU.InstancedShader instancedTreeShader;
     private InstancedShaderProviderGPU.ImpostorShader impostorShader;
+    private InstancedShaderProviderGPU.ImpostorShaderGPUheavy impostorShaderGPUheavy;
 
     private BitmapFont font;
     private PerspectiveCamera camera;
@@ -110,6 +110,9 @@ public class DemoScreen implements Screen {
     MapChunk[][] world;
     Array<MapChunk> chunksToBeRendered;
     Array<MapChunk> chunksToBeRenderedAsImpostors;
+    Array<MapChunk> chunksToBeRenderedAsGPUheavyImpostors;
+
+    private float GPUheavyThreshold;
 
 
     private Array<LodSettings> lodSettings;
@@ -121,12 +124,14 @@ public class DemoScreen implements Screen {
 
     private int instanceBufferMaxSize;
 
+    private int bufferSize;
+
 
     public DemoScreen(ImpostorDemo owner) {
         this.owner = owner;
     }
 
-    public void initGraphics(DemoEventListener listener, Array<LodSettings> lodSettings, int worldSize, int treeDensity, float decalDistance, int textureSize, int chunkSizeInTiles, boolean showTerrain)
+    public void initGraphics(DemoEventListener listener, Array<LodSettings> lodSettings, int worldSize, int treeDensity, float decalDistance, int textureSize, int chunkSizeInTiles, int bufferSize, boolean showTerrain)
     {
         if (listener != null) listener.working("initializing...");
 
@@ -135,9 +140,11 @@ public class DemoScreen implements Screen {
         this.tilesPerChunk = chunkSizeInTiles;
         this.chunkSize = chunkSizeInTiles * tileSize;
         this.treesPerTile = treeDensity;
+        this.bufferSize = bufferSize * 3;
 
         maxDistance = worldSize *  chunkSizeInTiles * tileSize;
         counter = 0;
+        GPUheavyThreshold = maxDistance * 2;
 
         this.lodSettings = new Array<>(lodSettings);
 
@@ -173,6 +180,7 @@ public class DemoScreen implements Screen {
         world = new MapChunk[chunksX][chunksY];
         chunksToBeRendered = new Array<>(chunksX*chunksY);
         chunksToBeRenderedAsImpostors = new Array<>(chunksX*chunksY);
+        chunksToBeRenderedAsGPUheavyImpostors = new Array<>(chunksX*chunksY);
 
         for (int x = 0; x < chunksX; x++) {
             for (int y = 0; y < chunksY; y++) {
@@ -192,7 +200,7 @@ public class DemoScreen implements Screen {
 
             //System.out.println("generating "+s.ID);
 
-            lodModels[counter] = new LodModel(s,instanceBufferMaxSize, decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
+            lodModels[counter] = new LodModel(s,instanceBufferMaxSize, decalDistance, maxDistance, textureSize, bufferSize, environment, instancedShaderProvider);
             //lodModels[counter] = new LodModelBatch(s,treeTypeInstanceCount[TREE_TYPE_FIR], decalDistance, maxDistance, textureSize, environment, instancedShaderProvider);
         }
         else {
@@ -211,16 +219,17 @@ public class DemoScreen implements Screen {
     public void startDemo()
     {
 
-        instancedTreeShader = new InstancedShaderProviderGPU.InstancedShader();
         instancedTreeShader.setRenderable(lodModels[0].renderables[0]);
         instancedTreeShader.init();
-        instancedTreeShader.setEnvironment(environment);
-
+        //instancedTreeShader.setEnvironment(environment);
 
         lodModel = lodModels[0];
-        impostorShader = new InstancedShaderProviderGPU.ImpostorShader();
+
         impostorShader.init();
         impostorShader.init(impostorShader.program,lodModel.renderables[lodModel.decalIndex]);
+
+        impostorShaderGPUheavy.init();
+        impostorShaderGPUheavy.init(impostorShaderGPUheavy.program,lodModel.renderables[lodModel.decalIndex]);
 
         context = new RenderContext(new DefaultTextureBinder(DefaultTextureBinder.LRU, 1));
 
@@ -270,11 +279,15 @@ public class DemoScreen implements Screen {
 
         startTime = TimeUtils.nanoTime();
 
+        for (int i = 0; i < lodModels.length; i++) {
+            lodModels[i].clearInstanceData();
+        }
 
         //chunk-based approach to optimize speed
 
         chunksToBeRendered.clear();
         chunksToBeRenderedAsImpostors.clear();
+        chunksToBeRenderedAsGPUheavyImpostors.clear();
         //first we determine which chunks are visible
         for (int x = 0; x < chunksX; x++) {
             for (int y = 0; y < chunksY; y++) {
@@ -292,38 +305,55 @@ public class DemoScreen implements Screen {
 
         boolean haveModels = false;
 
+
+
         for (MapChunk mapChunk : chunksToBeRendered) {
             for (int i = 0; i < TREE_TYPES_MAX; i++) {
 
                 float[] data = mapChunk.getTreeTypePositions(i);
                 if (data == null) continue;
 
-                if (!haveModels)
-                {
-                    instancedTreeShader.begin(camera,context);
-                    instancedTreeShader.setEnvironment(environment);
-                    haveModels = true;
-                }
-
                 LodModel lodModel = lodModels[i];
                 int lodIndex = lodModel.getLODlevel(mapChunk.distanceFromCamera);
 
-                if (lodIndex < lodModel.decalIndex)
-                    lodModel.render(instancedTreeShader,lodIndex,data);
-                else
-                    chunksToBeRenderedAsImpostors.add(mapChunk);
+                if (lodIndex < lodModel.decalIndex) {
+
+                    if (!haveModels) {
+                        instancedTreeShader.begin(camera, context);
+                        instancedTreeShader.setEnvironment(environment);
+                        haveModels = true;
+                    }
+
+                    lodModel.addInstanceData(lodIndex, data);
+                    //lodModel.render(instancedTreeShader,lodIndex,data);
+                }
+                else {
+
+                    if (mapChunk.distanceFromCamera < GPUheavyThreshold)
+                        chunksToBeRenderedAsGPUheavyImpostors.add(mapChunk);
+                    else
+                        chunksToBeRenderedAsImpostors.add(mapChunk);
+
+                }
                 //batch.flush();
 
             }
         }
 
-        if (haveModels) instancedTreeShader.end();
+        if (haveModels) {
+
+            for (int i = 0; i < lodModels.length; i++) {
+                lodModels[i].flushInstanceData();
+            }
+
+            instancedTreeShader.end();
+        }
         //context.end();
 
+        if (!chunksToBeRenderedAsGPUheavyImpostors.isEmpty()) {
 
-        if (!chunksToBeRenderedAsImpostors.isEmpty()) {
-
-            impostorShader.begin(camera,context);
+            impostorShaderGPUheavy.begin(camera,context);
+            //impostorShader.begin(camera,context);
 
             cameraLocation2D.set(camera.position.x,camera.position.z);
 
@@ -332,15 +362,45 @@ public class DemoScreen implements Screen {
                 LodModel lodModel = lodModels[i];
                 lodModel.texture.bind();
 
+                for (MapChunk mapChunk : chunksToBeRenderedAsGPUheavyImpostors) {
+                    float[] data = mapChunk.getTreeTypePositions(i);
+                    if (data == null) continue;
+
+                    //lodModel.getImpostor().userData = mapChunk.getTransform(cameraLocation2D,camera.position,lodModel);
+
+                    lodModel.addInstanceData(lodModel.decalIndex,data);
+                    //lodModel.renderHeavy(impostorShaderGPUheavy, lodModel.decalIndex, data);
+                }
+
+                lodModel.flushInstanceData(lodModel.decalIndex);
+            }
+            impostorShaderGPUheavy.end();
+        }
+
+
+        if (!chunksToBeRenderedAsImpostors.isEmpty()) {
+
+            impostorShader.begin(camera,context);
+            //impostorShader.begin(camera,context);
+
+            cameraLocation2D.set(camera.position.x,camera.position.z);
+
+            for (int i = 0; i < TREE_TYPES_MAX; i++) {
+
+                LodModel lodModel = lodModels[i];
+
+                lodModel.texture.bind();
+
                 for (MapChunk mapChunk : chunksToBeRenderedAsImpostors) {
                         float[] data = mapChunk.getTreeTypePositions(i);
                         if (data == null) continue;
 
-                        //lodModel.getImpostor().worldTransform.set(mapChunk.getTransform(cameraLocation2D,camera.position,lodModel));
                         lodModel.getImpostor().userData = mapChunk.getTransform(cameraLocation2D,camera.position,lodModel);
                         lodModel.render(impostorShader, lodModel.decalIndex, data);
-                        //batch.flush();
+                        //lodModel.addInstanceData(lodModel.decalIndex, data);
                     }
+
+                //lodModel.flushInstanceData(lodModel.decalIndex);
             }
             impostorShader.end();
         }
@@ -577,6 +637,13 @@ public class DemoScreen implements Screen {
 
     private void init() {
         instancedShaderProvider = new InstancedShaderProviderGPU(null);
+
+        instancedTreeShader = new InstancedShaderProviderGPU.InstancedShader();
+        impostorShader = new InstancedShaderProviderGPU.ImpostorShader();
+        impostorShaderGPUheavy = new InstancedShaderProviderGPU.ImpostorShaderGPUheavy();
+        instancedShaderProvider.impostorShaderGPUheavy = impostorShaderGPUheavy;
+        instancedShaderProvider.impostorShader = impostorShader;
+        instancedShaderProvider.instancedShader = instancedTreeShader;
 
         cameraLocation2D = new Vector2();
 
