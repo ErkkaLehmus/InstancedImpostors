@@ -146,15 +146,10 @@ public class DemoScreen implements Screen {
         maxDistance = worldSize *  chunkSizeInTiles * tileSize;
         worldSizeHalf = maxDistance / 2f;
         counter = 0;
+
         GPUheavyThreshold = maxDistance * 2;
 
         this.lodSettings = new Array<>(lodSettings);
-
-        Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
-        Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
-        //Gdx.gl32.glDisable(GL32.GL_CULL_FACE);
-        Gdx.gl32.glCullFace(GL32.GL_BACK);
-        Gdx.gl32.glDisable(GL32.GL_BLEND);
 
 
         disableRendering = true;
@@ -263,6 +258,11 @@ public class DemoScreen implements Screen {
 
     @Override
     public void show() {
+        Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
+        Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
+        //Gdx.gl32.glDisable(GL32.GL_CULL_FACE);
+        Gdx.gl32.glCullFace(GL32.GL_BACK);
+        Gdx.gl32.glDisable(GL32.GL_BLEND);
     }
 
     @Override

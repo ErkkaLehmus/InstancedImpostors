@@ -400,6 +400,7 @@ public class MainMenu implements Screen {
 
     public void addMessage(String message)
     {
+        stage.getViewport().apply();
         window.add(message).row();
         window.pack();
         window.invalidateHierarchy();

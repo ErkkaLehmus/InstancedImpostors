@@ -843,11 +843,13 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         FrameBuffer fbo = new FrameBuffer(Pixmap.Format.RGBA8888, fboWidth, fboHeight, true);
         fbo.begin();
 
-
+        /*
         Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
         Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
         Gdx.gl32.glCullFace(GL32.GL_BACK);
         Gdx.gl32.glDisable(GL32.GL_BLEND);
+
+         */
 
         Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
         Gdx.gl.glClear(GL32.GL_COLOR_BUFFER_BIT | GL32.GL_DEPTH_BUFFER_BIT);
@@ -857,6 +859,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         shader.init();
 
         RenderContext context = new RenderContext(new DefaultTextureBinder(DefaultTextureBinder.LRU, 1));
+        context.begin();
 
         //modelBatch.begin(tmpCamera);
         shader.begin(tmpCamera,context);
@@ -967,6 +970,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         //modelBatch.dispose();
         fbo.dispose();
         clippedPixmap.dispose();
+        context.end();
 
         stepsX--;
 
@@ -1075,8 +1079,8 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         decalRenderable.meshPart.set("DECAL", mesh, 0, indices, GL32.GL_TRIANGLES);
         decalRenderable.environment = renderable.environment;
         decalRenderable.worldTransform.idt();
-        decalRenderable.shader = instancedShaderProvider.createDecalShader(decalRenderable);
-        decalRenderable.shader.init();
+        //decalRenderable.shader = instancedShaderProvider.createDecalShader(decalRenderable);
+        //decalRenderable.shader.init();
         TextureAttribute attr = new TextureAttribute(TextureAttribute.Diffuse, texture);
         //decalRenderable.material = blankMaterial;
         decalRenderable.material = new Material(attr);
