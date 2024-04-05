@@ -37,7 +37,7 @@ public class Lwjgl3Launcher {
         //// You may also need to configure GPU drivers to fully disable Vsync; this can cause screen tearing.
 
 
-        configuration.setBackBufferConfig(8,8,8,8,16,0,4);
+        configuration.setBackBufferConfig(8,8,8,8,32,0,4);
         //for anti-aliasing we set the samples to 4
         //not using anti-aliasing might improve performance at the cost of quality.
         //this seems to cause problems on my hardware, so if you encounter strange crashes try commenting out line 39

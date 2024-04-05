@@ -27,7 +27,7 @@ public class HeightMapTerrain extends Terrain {
     private final HeightField field;
 
     public HeightMapTerrain(float[] data, int width,  float magnitude) {
-        this.size = width*10;
+        this.size = width*10-10;
         this.width = width;
         this.heightMagnitude = magnitude;
 
@@ -65,11 +65,8 @@ public class HeightMapTerrain extends Terrain {
         Material material = new Material("TERRAIN_0",TextureAttribute.createDiffuse(texture));
 
 
-
-        ground.worldTransform.setTranslation(-(float)size/2f,0,-(float)size/2f);
+        //ground.worldTransform.setTranslation(-(float)size/2f,0,-(float)size/2f);
         ground.meshPart.mesh = field.mesh;
-
-        //ground.meshPart.mesh.transform(new Matrix4(new Vector3(-(float)size/2f,0,-(float)size/2f),new Quaternion(),new Vector3(1f,1f,1f)));
 
         ground.meshPart.primitiveType = GL20.GL_TRIANGLES;
         ground.meshPart.offset = 0;
@@ -94,13 +91,16 @@ public class HeightMapTerrain extends Terrain {
 
         //material.set(PbrTextureAttribute);
 
+
         /*
         ModelBuilder mb = new ModelBuilder();
         mb.begin();
         mb.part("terrain", field.mesh, GL20.GL_TRIANGLES, material);
         groundModelInstance = new ModelInstance(mb.end());
 
+
          */
+
     }
 
     @Override

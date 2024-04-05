@@ -1,17 +1,28 @@
 package com.enormouselk.sandbox.impostors;
 
+import com.badlogic.gdx.graphics.g3d.Renderable;
+import com.badlogic.gdx.graphics.g3d.Shader;
+import com.badlogic.gdx.graphics.g3d.shaders.DefaultShader;
+import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.math.collision.BoundingBox;
+import com.enormouselk.sandbox.impostors.terrains.HeightMapTerrain;
+import com.enormouselk.sandbox.impostors.terrains.Terrain;
 
 import java.util.HashMap;
 
 import static com.badlogic.gdx.math.MathUtils.HALF_PI;
 import static com.badlogic.gdx.math.MathUtils.round;
+import static com.enormouselk.sandbox.impostors.DemoScreen.convertToTreeType;
 import static com.enormouselk.sandbox.impostors.LodModel.MINIMUM_ANGLE_RAD;
 import static java.lang.Math.abs;
 import static java.lang.Math.min;
 
 public class MapChunk {
+
+    public static DemoScreen owner;
+    private Terrain terrain;
+    public Renderable terrainRenderable;
 
     public int maxTrees;
     public float size;
@@ -28,8 +39,10 @@ public class MapChunk {
 
     private Quaternion q;
     private Matrix4 mat4;
-
     private DecalTransform decalTransform;
+
+
+
 
 
 
@@ -43,7 +56,6 @@ public class MapChunk {
         this.maxTrees = maxTrees;
         this.worldOffsetX = worldOffsetX;
         this.worldOffsetY = worldOffsetY;
-        boundingBox = new BoundingBox();
         positions = new ShrinkableFloatArray[treeTypeCount];
 
         for (int i = 0; i < treeTypeCount; i++) {
@@ -52,11 +64,86 @@ public class MapChunk {
         }
     }
 
-    public void addInstance(int type, Vector3 position, float radius)
+    private static float getSubPosition()
+    {
+        return MathUtils.random((float)owner.tileSize);
+    }
+
+    public void init(Noise noise, int sizeInTiles, int cabinTileX, int cabinTileY){
+
+        int tt;
+        int heightMapNodes = sizeInTiles+1;
+
+        float[] heightMapData = new float[heightMapNodes * heightMapNodes];
+
+        for (int x = 0; x < heightMapNodes; x++) {
+            for (int y = 0; y < heightMapNodes ; y++) {
+                float ix = worldOffsetX + x * owner.tileSize;
+                float iz = worldOffsetY + y * owner.tileSize;
+                heightMapData[y*heightMapNodes+x] =  noise.getConfiguredNoise(ix / owner.tileSize, iz / owner.tileSize) * owner.terrainHeightMultiplier;
+            }
+        }
+        terrain = new HeightMapTerrain(heightMapData, heightMapNodes, 1f);
+        terrainRenderable = terrain.getRenderable();
+        //terrainRenderable.worldTransform.setTranslation(worldOffsetX,0,worldOffsetY);
+        terrainRenderable.worldTransform.translate(worldOffsetX,0,worldOffsetY);
+        terrainRenderable.environment = owner.environment;
+
+        float ix,iz;
+
+        for (int x = 0; x < sizeInTiles; x++) {
+            for (int y = 0; y < sizeInTiles ; y++) {
+
+                if (tooCloseToCabin(x,y,cabinTileX,cabinTileY)) continue;
+
+                for (int i = 0; i < owner.treesPerTile; i++) {
+                    tt = convertToTreeType(MathUtils.random(100));
+
+                    ix = worldOffsetX + x * owner.tileSize + getSubPosition();
+                    iz = worldOffsetY + y * owner.tileSize + getSubPosition();
+
+                    addInstance(tt,new Vector3(
+                                ix ,
+                            //noise.getConfiguredNoise(ix / owner.tileSize, iz / owner.tileSize) * owner.terrainHeightMultiplier,
+                                    terrain.getHeightAtWorldCoord(ix,iz),
+                                iz),
+                                owner.lodModels[tt].decalWorldHalfHeight,
+                                owner.lodModels[tt].radius);
+                }
+            }
+        }
+
+    }
+
+    public boolean tooCloseToCabin(int tileX,int tileY, int cabinX, int cabinY)
+    {
+        int distX = cabinX - tileX;
+        int distY = cabinY - tileY;
+        if ((distX < -2) || (distX > 2)) return false;
+        if ((distY < -2) || (distY > 2)) return false;
+        return true;
+    }
+
+
+    public float getHeightAtWorldCoord(float ix,float iz)
+    {
+        return terrain.getHeightAtWorldCoord(ix,iz);
+    }
+
+    public void addInstance(int type, Vector3 position, float centreY,float radius)
     {
         //if (positions[type] == null) positions[type] = new ShrinkableFloatArray(maxTrees * 3);
         positions[type].put(position);
-        boundingBox.ext(position,radius);
+        Vector3 instanceCenter = new Vector3(position.x,position.y+centreY,position.z);
+
+        if (boundingBox == null) {
+
+            Vector3 instanceMin = new Vector3(position.x-radius,position.y+centreY-radius,position.z-radius);
+            Vector3 instanceMax = new Vector3(position.x+radius,position.y+centreY+radius,position.z+radius);
+            boundingBox = new BoundingBox(instanceMin,instanceMax);
+        }
+        else
+            boundingBox.ext(instanceCenter,radius);
     }
 
     public void optimize()
@@ -65,6 +152,8 @@ public class MapChunk {
             if (positions[i] == null) continue;
             positions[i].shrink();
         }
+        if (boundingBox == null) boundingBox = new BoundingBox();
+        boundingBox.update();
         center = new Vector3();
         boundingBox.getCenter(center);
     }
@@ -77,9 +166,13 @@ public class MapChunk {
 
     public float getDistance(Vector3 from)
     {
+        /*
         distanceFromCamera = abs(from.dst(boundingBox.max));
         distanceFromCamera = min(abs(from.dst(center)),abs(from.dst(boundingBox.max)));
         distanceFromCamera = min(abs(from.dst(boundingBox.min)),abs(from.dst(boundingBox.max)));
+         */
+
+        distanceFromCamera = abs(from.dst(center));
         return distanceFromCamera;
     }
 

@@ -22,15 +22,7 @@ import static com.badlogic.gdx.math.MathUtils.sinDeg;
 import static java.lang.Math.pow;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.GL32;
-import com.badlogic.gdx.graphics.Mesh;
-import com.badlogic.gdx.graphics.PerspectiveCamera;
-import com.badlogic.gdx.graphics.Pixmap;
-import com.badlogic.gdx.graphics.PixmapIO;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.VertexAttribute;
-import com.badlogic.gdx.graphics.VertexAttributes;
+import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g3d.*;
 import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute;
 import com.badlogic.gdx.graphics.g3d.shaders.BaseShader;
@@ -53,8 +45,8 @@ import java.util.Arrays;
 
 class LodModel implements BatchOfFloats.FloatStreamer {
 
-    private static final String debugFilePath = null;
-    //private static final String debugFilePath = "tmp/lodtest";
+    //private static final String debugFilePath = null;
+    private static final String debugFilePath = "tmp/lodtest";
     //if debugFilePath is not null, png files of generated impostors will be saved at the given folder
 
     private float textureSize;
@@ -492,7 +484,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         {
             Mesh lod0 = loadFromGLB(modelFile + "lod0.glb");
             setupInstancedMesh(lod0, 0, environment);
-            radius = lod0.calculateRadius(0, 0, 0);
+            radius = lod0.calculateRadius(0, decalWorldHalfHeight, 0);
 
             Mesh lod1 = loadFromGLB(modelFile + "lod1.glb");
             setupInstancedMesh(lod1, 1, environment);
@@ -939,7 +931,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
                 //when the camera is taken higher, we need to gently adjust the image position,
                 //otherwise when seen from directly above we would only see a northern half of the model
                 //and the rest being cut out.
-                int dropY = -round(sine * pxWidth / 2);
+                int dropY = -round((sine * (pxHeight / 2) / 2));
 
                 //after the camera has been rotated we take a snapshot and store it in the pixmap
                 clipDecal(shader, context, tmpCamera, renderable, clippedPixmap, cropX, cropY + dropY, pxWidth, pxHeight, offsetX, offsetY - (dropY));
@@ -1091,7 +1083,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
 
         renderables[decalIndex] = decalRenderable;
 
-        this.decalData = new DecalData(uvWidth,uvHeight,stepsX,stepsY,angleYStep*MathUtils.degRad,angleXStep*MathUtils.degRad);
+        this.decalData = new DecalData(decalWorldHalfHeight,uvWidth,uvHeight,stepsX,stepsY,angleYStep*MathUtils.degRad,angleXStep*MathUtils.degRad);
     }
 
 
@@ -1147,7 +1139,10 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         float[] uvSteps;
         float[] uvStepSize;
 
-        public DecalData(float uvSizeX,float uvSizeY,float uvStepsX,float uvStepsY,float uvStepSizeX,float uvStepSizeY) {
+        float halfHeight;
+
+        public DecalData(float halfHeight,float uvSizeX,float uvSizeY,float uvStepsX,float uvStepsY,float uvStepSizeX,float uvStepSizeY) {
+            this.halfHeight = halfHeight;
             uvSize = new float[2];
             uvSize[0] = uvSizeX;
             uvSize[1] = uvSizeY;

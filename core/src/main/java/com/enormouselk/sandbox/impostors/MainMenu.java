@@ -334,8 +334,9 @@ public class MainMenu implements Screen {
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) setLowEndPreset();
 
-
         ScreenUtils.clear(Color.SKY);
+
+        stage.getViewport().apply();
         stage.act(delta);
         //stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
         stage.draw();
@@ -373,7 +374,9 @@ public class MainMenu implements Screen {
 
     public void clear(boolean useOptimized)
     {
-        window.clear();
+        window.clearChildren();
+        window.setBackground("cyan");
+        window.setSkin(skin);
         //window.getTitleLabel().setText("... PLEASE WAIT ...");
         window.add("Generating 3D, this might take a while.").row();
         window.add("Or this might crash, if there is not enough memory.").row();
@@ -389,6 +392,9 @@ public class MainMenu implements Screen {
         }
 
         window.pack();
+        window.invalidateHierarchy();
+
+        //root.debugAll();
         //window.centerWindow();
     }
 
@@ -396,7 +402,7 @@ public class MainMenu implements Screen {
     {
         window.add(message).row();
         window.pack();
-        //window.centerWindow();
+        window.invalidateHierarchy();
     }
 
     private int getMaxTextureSize () {

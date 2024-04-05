@@ -471,7 +471,7 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
 
             //MapChunk.DecalTransform decalTransform = (MapChunk.DecalTransform) renderable.userData;
             //program.setUniformf("u_moveY", decalTransform.moveY);
-            program.setUniformf("u_moveY", 12f);
+            program.setUniformf("u_moveY", decalData.halfHeight);
 
             program.setUniformi("u_texture", 0);
             program.setUniform2fv("u_uvStepSize",decalData.uvStepSize,0,2);

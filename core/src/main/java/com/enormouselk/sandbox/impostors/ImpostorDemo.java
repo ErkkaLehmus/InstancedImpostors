@@ -45,17 +45,22 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
 
     @Override
     public void dispose () {
-       if (mainMenu != null) mainMenu.dispose();
+        if (mainMenu != null) mainMenu.dispose();
     }
 
     public void startDemo(Array<LodSettings> settings, float worldSize, float treeDensity, float decalDistance, int textureSize, int chunkSize,int instanceBufferSize, boolean showTerrain)
     {
         boolean useOptimized = settings.get(0).filetype.equalsIgnoreCase("gltf");
         mainMenu.clear(useOptimized);
-        if (demoScreen == null) demoScreen = new DemoScreen(ImpostorDemo.this);
 
+        Gdx.app.postRunnable(new Runnable() {
+            @Override
+            public void run() {
+                if (demoScreen == null) demoScreen = new DemoScreen(ImpostorDemo.this);
+                demoScreen.initGraphics(ImpostorDemo.this,settings,  (int)worldSize,(int)treeDensity,decalDistance,textureSize, chunkSize, instanceBufferSize, showTerrain);
+            }
+        });
 
-        demoScreen.initGraphics(ImpostorDemo.this,settings,  (int)worldSize,(int)treeDensity,decalDistance,textureSize, chunkSize, instanceBufferSize, showTerrain);
         //demoScreen.initGraphics(ImpostorDemo.this,settings,  (int)worldSize,(int)treeDensity,decalDistance,textureSize, MathUtils.round((float) Math.sqrt(instanceBufferSize/treeDensity)), showTerrain);
         handleDemoMessages = true;
     }
@@ -63,10 +68,19 @@ public class ImpostorDemo extends Game implements DemoScreen.DemoEventListener {
     @Override
     public void finished() {
         handleDemoMessages = false;
-        setScreen(demoScreen);
         //mainMenu.dispose();
         //mainMenu = null;
-        demoScreen.startDemo();
+        if (mainMenu != null) mainMenu.addMessage("generating terrain, please wait...");
+
+
+        Gdx.app.postRunnable(new Runnable() {
+            @Override
+            public void run() {
+                demoScreen.startDemo();
+                setScreen(demoScreen);
+            }
+        });
+
     }
 
     @Override

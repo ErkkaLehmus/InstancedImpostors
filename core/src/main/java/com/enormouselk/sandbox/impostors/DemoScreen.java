@@ -29,7 +29,7 @@ import com.enormouselk.sandbox.impostors.terrains.Terrain;
 
 public class DemoScreen implements Screen {
 
-    private static final int terrainHeightMultiplier = 32;
+    static final int terrainHeightMultiplier = 32;
     public static final int TREE_TYPES_MAX = 3;
     public static final int TREE_TYPE_FIR = 0;
     public static final int TREE_TYPE_PINE = 1;
@@ -45,7 +45,7 @@ public class DemoScreen implements Screen {
 
     private GLProfiler profiler;
     private InstancedShaderProviderGPU instancedShaderProvider;
-    private Environment environment;
+    Environment environment;
 
     private Terrain terrain;
     private Renderable terrainRenderable;
@@ -55,6 +55,7 @@ public class DemoScreen implements Screen {
     private InstancedShaderProviderGPU.InstancedShader instancedTreeShader;
     private InstancedShaderProviderGPU.ImpostorShader impostorShader;
     private InstancedShaderProviderGPU.ImpostorShaderGPUheavy impostorShaderGPUheavy;
+    private Shader terrainShader;
 
     private BitmapFont font;
     private PerspectiveCamera camera;
@@ -70,7 +71,7 @@ public class DemoScreen implements Screen {
     //a common base interface, so that it would be easy to switch between them in the code.
     //But that is not my top priority today...
 
-    private final LodModel[] lodModels = new LodModel[TREE_TYPES_MAX];
+    final LodModel[] lodModels = new LodModel[TREE_TYPES_MAX];
     //private final LodModel[] lodModels = new LodModel[TREE_TYPES_MAX];
 
     private Model cabinModel;
@@ -79,24 +80,25 @@ public class DemoScreen implements Screen {
     private Vector3 cabinPosition;
 
 
-    private Vector3 vec3Temp;
+    //private Vector3 vec3Temp;
     private Vector2 cameraLocation2D;
     private LodModel lodModel;
 
 
-    private final int tileSize = 10;
+    final int tileSize = 10;
     private int chunkSize;
     private int tilesPerChunk;
     private int chunksX;
     private int chunksY;
     private int treesPerChunk;
-    private int treesPerTile;
+    int treesPerTile;
     private int treeCount;
 
     private int counter;
     private float decalDistance;
     private int textureSize;
     private float maxDistance;
+    public float worldSizeHalf;
 
     private int[] treeTypes;
     //an array to hold the type of each tree
@@ -120,7 +122,7 @@ public class DemoScreen implements Screen {
 
     private final ImpostorDemo owner;
 
-    private boolean showTerrain;
+    boolean showTerrain;
 
     private int instanceBufferMaxSize;
 
@@ -135,7 +137,6 @@ public class DemoScreen implements Screen {
     {
         if (listener != null) listener.working("initializing...");
 
-
         this.showTerrain = showTerrain;
         this.tilesPerChunk = chunkSizeInTiles;
         this.chunkSize = chunkSizeInTiles * tileSize;
@@ -143,6 +144,7 @@ public class DemoScreen implements Screen {
         this.bufferSize = bufferSize * 3;
 
         maxDistance = worldSize *  chunkSizeInTiles * tileSize;
+        worldSizeHalf = maxDistance / 2f;
         counter = 0;
         GPUheavyThreshold = maxDistance * 2;
 
@@ -184,7 +186,7 @@ public class DemoScreen implements Screen {
 
         for (int x = 0; x < chunksX; x++) {
             for (int y = 0; y < chunksY; y++) {
-                world[x][y] = new MapChunk(chunkSize,TREE_TYPES_MAX,treesPerChunk,x * chunkSize, y*chunkSize);
+                world[x][y] = new MapChunk(chunkSize,TREE_TYPES_MAX,treesPerChunk,x * chunkSize - worldSizeHalf, y*chunkSize - worldSizeHalf);
             }
         }
 
@@ -409,7 +411,20 @@ public class DemoScreen implements Screen {
 
         batch.begin(camera);
 
-        if ((showTerrain) && (terrainRenderable != null)) batch.render(terrainRenderable);
+        if (showTerrain)
+        {
+            for (MapChunk mapChunk : chunksToBeRendered) {
+                batch.render(mapChunk.terrainRenderable);
+            }
+
+            for (MapChunk chunksToBeRenderedAsImpostor : chunksToBeRenderedAsImpostors) {
+                batch.render(chunksToBeRenderedAsImpostor.terrainRenderable);
+            }
+
+            for (MapChunk chunksToBeRenderedAsGPUheavyImpostor : chunksToBeRenderedAsGPUheavyImpostors) {
+                batch.render(chunksToBeRenderedAsGPUheavyImpostor.terrainRenderable);
+            }
+        }
 
         if (cabinInstance != null) batch.render(cabinInstance,environment);
 
@@ -534,14 +549,16 @@ public class DemoScreen implements Screen {
 
     private void createWorld(){
 
+        MapChunk.owner = this;
+
         int worldSizeInTiles = MathUtils.round(maxDistance / tileSize);
         //Noise noise = new Noise();
         Noise noise = new Noise(1337,1f/64f,Noise.SIMPLEX,1,2.5f,0.5f);
-        float worldSizeHalf = maxDistance / 2f;
-
-        int tt;
+        //int tt;
         MapChunk mapChunk;
 
+
+        /*
         int heightMapNodes = worldSizeInTiles+1;
 
         float[] heightMapData = new float[heightMapNodes * heightMapNodes];
@@ -555,18 +572,39 @@ public class DemoScreen implements Screen {
         }
         terrain = new HeightMapTerrain(heightMapData, heightMapNodes, 1f);
 
+         */
+
         int cabinTileX = MathUtils.random(0,worldSizeInTiles);
         int cabinTileY = MathUtils.random(0,worldSizeInTiles);
+
+        int chunkOffsetX,chunkOffsetY;
+
+
+        for (int x = 0; x < chunksX; x++) {
+            for (int y = 0; y < chunksY; y++) {
+
+                chunkOffsetX = x*tilesPerChunk;
+                chunkOffsetY = y*tilesPerChunk;
+
+                mapChunk = world[x][y];
+                mapChunk.init(noise,tilesPerChunk,cabinTileX-chunkOffsetX,cabinTileY-chunkOffsetY);
+                mapChunk.optimize();
+
+            }
+        }
+
 
         float ix = cabinTileX * tileSize - worldSizeHalf + 5f;
         float iz = cabinTileY * tileSize - worldSizeHalf + 5f;
 
-        float[] elevations = new float[4];
+        //float[] elevations = new float[4];
 
+        /*
         elevations[0] = terrain.getHeightAtWorldCoord(ix-2.5f,iz-2.5f);
         elevations[1] = terrain.getHeightAtWorldCoord(ix+2.5f,iz-2.5f);
         elevations[2] = terrain.getHeightAtWorldCoord(ix+2.5f,iz+2.5f);
         elevations[3] = terrain.getHeightAtWorldCoord(ix-2.5f,iz+2.5f);
+
 
         float cabinElevation = elevations[0];
 
@@ -574,8 +612,17 @@ public class DemoScreen implements Screen {
             if (elevations[i] > cabinElevation) cabinElevation = elevations[i];
         }
 
+         */
+
+        //float cabinElevation = noise.getConfiguredNoise(cabinTileX / tileSize, cabinTileY / tileSize) * terrainHeightMultiplier + 1f;
+
+        mapChunk = world[cabinTileX / tilesPerChunk][cabinTileY / tilesPerChunk];
+
+        float cabinElevation = mapChunk.getHeightAtWorldCoord(ix,iz);
+
         cabinPosition = new Vector3(ix , cabinElevation,iz);
 
+        /*
         for (int x = 0; x < worldSizeInTiles; x++) {
             for (int y = 0; y < worldSizeInTiles ; y++) {
 
@@ -599,22 +646,36 @@ public class DemoScreen implements Screen {
             }
         }
 
+         */
+
+
+        /*
         for (int x = 0; x < chunksX; x++) {
             for (int y = 0; y < chunksY; y++) {
                 world[x][y].optimize();
             }
         }
 
-        if (showTerrain) {
-            terrainRenderable = terrain.getRenderable();
+         */
 
+        if (showTerrain) {
             ShaderProgram.prependVertexCode = "";
             ShaderProgram.prependFragmentCode = "";
 
-            Shader terrainShader = new DefaultShader(terrainRenderable);
+            terrainShader = new DefaultShader(world[0][0].terrainRenderable);
             terrainShader.init();
-            terrainRenderable.shader = terrainShader;
+
+            for (int x = 0; x < chunksX; x++) {
+                for (int y = 0; y < chunksY; y++) {
+                    mapChunk = world[x][y];
+                    if (mapChunk.terrainRenderable != null)
+                        mapChunk.terrainRenderable.shader = terrainShader;
+
+                }
+            }
         }
+
+
     }
 
     private void resetCounters(){
