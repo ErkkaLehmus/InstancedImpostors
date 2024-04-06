@@ -33,13 +33,13 @@
 	{
 		"bufferView": 0,
 		"componentType": 5126,
-		"count": 8684,
+		"count": 904,
 		"type": "VEC3"
 	},
 	{
 		"bufferView": 1,
 		"componentType": 5126,
-		"count": 8684,
+		"count": 904,
 		"type": "VEC3",
 		"min": [ -2.2241647, 0, -2.2496426 ],
 		"max": [ 2.3161793, 19.896557, 2.2779996 ]
@@ -47,13 +47,13 @@
 	{
 		"bufferView": 2,
 		"componentType": 5123,
-		"count": 8684,
+		"count": 904,
 		"type": "VEC4"
 	},
 	{
 		"bufferView": 3,
 		"componentType": 5123,
-		"count": 8733,
+		"count": 6108,
 		"type": "SCALAR"
 	}
 ],
@@ -76,29 +76,29 @@
 ],
 "bufferViews": [
 	{
-		"byteLength": 104208,
+		"byteLength": 10848,
 		"buffer": 0
 	},
 	{
-		"byteOffset": 104208,
-		"byteLength": 104208,
+		"byteOffset": 10848,
+		"byteLength": 10848,
 		"buffer": 0
 	},
 	{
-		"byteOffset": 208416,
-		"byteLength": 69472,
+		"byteOffset": 21696,
+		"byteLength": 7232,
 		"buffer": 0
 	},
 	{
-		"byteOffset": 277888,
-		"byteLength": 17466,
+		"byteOffset": 28928,
+		"byteLength": 12216,
 		"buffer": 0
 	}
 ],
 "buffers": [
 	{
-		"uri": "pine_70.bin",
-		"byteLength": 295354
+		"uri": "pine_74.bin",
+		"byteLength": 41144
 	}
 ],
 "extensionsUsed": [

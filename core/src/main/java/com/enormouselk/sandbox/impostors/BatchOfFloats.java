@@ -58,11 +58,20 @@ public class BatchOfFloats {
 
     public void put(float[] values) {
 
-        int overFlow = values.length - (capacity-position);
+        int remaining = capacity-position;
+        if (remaining == 0)
+        {
+            if (streamer != null)
+                streamer.flush(id,true);
+            clear();
+            remaining = capacity;
+        }
+
+        int overFlow = values.length - (remaining);
 
         if (overFlow > 0) {
-            int remaining = capacity-position;
-            int fromIndex = values.length-overFlow;
+            //int fromIndex = values.length-overFlow;
+            int fromIndex = 0;
             int toBeCopied = overFlow;
             if (toBeCopied > remaining) toBeCopied = remaining;
 
@@ -71,6 +80,7 @@ public class BatchOfFloats {
                 System.arraycopy(values,fromIndex,data,position,toBeCopied);
                 if (streamer != null)
                     streamer.flush(id,true);
+                clear();
                 fromIndex+=toBeCopied;
 
                 toBeCopied = values.length-fromIndex;
@@ -85,7 +95,7 @@ public class BatchOfFloats {
                 //data = Arrays.copyOfRange(values, fromIndex, fromIndex+capacity);
                 System.arraycopy(values,fromIndex,data,position,toBeCopied);
                 //data = Arrays.copyOfRange(values, fromIndex, toBeCopied);
-                position = values.length - fromIndex;
+                position = toBeCopied;
             }
 
         }

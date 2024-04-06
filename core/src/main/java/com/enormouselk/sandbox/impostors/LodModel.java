@@ -45,15 +45,17 @@ import java.util.Arrays;
 
 class LodModel implements BatchOfFloats.FloatStreamer {
 
-    //private static final String debugFilePath = null;
-    private static final String debugFilePath = "tmp/lodtest";
+    private static final String debugFilePath = null;
+    //private static final String debugFilePath = "tmp/lodtest";
     //if debugFilePath is not null, png files of generated impostors will be saved at the given folder
 
     private float textureSize;
     private final float decalCameraDistance = 100;
 
 
-    public static final int DECAL_INSTANCE_DATA_SIZE = 18;
+    //this was the old system which calclulated transforms on the CPU side
+    //but now we leave all this for the GPU to handle
+    //public static final int DECAL_INSTANCE_DATA_SIZE = 18;
     //for the demo we store for each instance
     // - world transformation : 4 * 4 = 16 floats
     // - UV offset : 2 floats
@@ -63,6 +65,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
     // why it needs to be 16 floats and no less
 
     public int decalIndex;
+    public int optimizedDecalIndex;
     private float[] LODdistances;
 
     private boolean hasDecal;
@@ -160,6 +163,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         this.hasDecal = settings.generateImpostor;
         if (hasDecal) {
             decalIndex = LOD_MAX;
+            optimizedDecalIndex = decalIndex+1;
             int maxTextureSize = getMaxTextureSize();
             if (textureSize > maxTextureSize) textureSize = maxTextureSize;
             this.textureSize = textureSize;
@@ -173,6 +177,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         }
         else {
             decalIndex = -1;
+            optimizedDecalIndex = -2;
             this.textureSize = 0;
             this.maxDecalInstances = 0;
             maxModelInstances = bufferSize / 3;
@@ -189,7 +194,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         //mat4 = new Matrix4();
         renderables = new Renderable[LOD_MAX + 1];
 
-        instanceData = new BatchOfFloats[LOD_MAX + 1];
+        instanceData = new BatchOfFloats[LOD_MAX + 2];
         for (int i = 0; i < instanceData.length; i++) {
             instanceData[i] = new BatchOfFloats(i,bufferSize,this);
 
@@ -236,7 +241,6 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         if (hasDecal) return (int) LODdistances[decalIndex-1];
         return -1;
     }
-
 
 
     /*
@@ -377,22 +381,28 @@ class LodModel implements BatchOfFloats.FloatStreamer {
 
          */
 
+        if (lodIndex == optimizedDecalIndex) lodIndex--;
+
         Renderable renderable = renderables[lodIndex];
+
         renderable.meshPart.mesh.setInstanceData(instanceData);
         batch.render(renderable);
-        debugCounters[lodIndex]+=instanceData.length;
+        debugCounters[lodIndex]+=instanceData.length / 3;
         //batch.flush();
     }
 
     public void render(BaseShader shader,  int lodIndex, float[] instanceData)
     {
+        if (lodIndex == optimizedDecalIndex) lodIndex--;
+
         Renderable renderable = renderables[lodIndex];
+
         renderable.meshPart.mesh.setInstanceData(instanceData);
 
         //shader.init(shader.program,renderable);
         shader.render(renderable);
 
-        debugCounters[lodIndex]+=instanceData.length;
+        debugCounters[lodIndex]+=instanceData.length / 3;
     }
 
     public void renderHeavy(InstancedShaderProviderGPU.ImpostorShaderGPUheavy shader, int lodIndex, float[] instanceData)
@@ -403,7 +413,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         //shader.init(shader.program,renderable);
         shader.render(renderable,decalData);
 
-        debugCounters[lodIndex]+=instanceData.length;
+        debugCounters[lodIndex]+=instanceData.length / 3;
     }
 
     @Override
@@ -414,7 +424,10 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         }
         else
         {
-            renderHeavy(impostorShaderGPUheavy,id,instanceData[id].data);
+            if (id == optimizedDecalIndex)
+                render(impostorShader,decalIndex,instanceData[id].data);
+            else
+                renderHeavy(impostorShaderGPUheavy,id,instanceData[id].data);
         }
     }
     
@@ -446,7 +459,10 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         }
         else
         {
-            renderHeavy(impostorShaderGPUheavy,index,instanceData[index].getData());
+            if (index == optimizedDecalIndex)
+                render(impostorShader,decalIndex,instanceData[index].getData());
+            else
+                renderHeavy(impostorShaderGPUheavy,index,instanceData[index].getData());
         }
     }
     
@@ -466,6 +482,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
     {
         return renderables[decalIndex];
     }
+
 
 
     private void setupInstancedMeshes(String modelFile, String fileType, Environment environment) {
@@ -601,6 +618,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         //also, to optimize memory usage I'd guess here we could also just pack the color
         //but for the demo I left it this way, for these are things I still need to learn more about
 
+        /*
         int coff = mesh.getVertexAttributes().getOffset(VertexAttributes.Usage.ColorUnpacked);
         if (coff >= 0) {
             int counter = coff;
@@ -621,6 +639,8 @@ class LodModel implements BatchOfFloats.FloatStreamer {
 
             mesh.setVertices(vertData);
         }
+
+         */
 
         //we dispose the rest of the sceneAsset. Mesh will be disposed in the LodModel.dispose()
         if (sceneAsset.scenes != null) {
@@ -690,10 +710,6 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         //modelBatch.begin(tmpCamera);
         //modelBatch.render(renderable);
         //modelBatch.end();
-
-        //renderable.shader.begin(tmpCamera,context);
-        //renderable.shader.render(renderable);
-        //renderable.shader.end();
 
         Pixmap fboPixmap = Pixmap.createFromFrameBuffer(cropX, cropY, pxWidth, pxHeight);
         clippedPixmap.drawPixmap(fboPixmap, offsetX, offsetY);

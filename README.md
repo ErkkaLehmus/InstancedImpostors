@@ -15,7 +15,10 @@ Although this is for my own commercial game project, I wanted to release this pi
 yours
  Erkka from Enormous Elk
 
-PS. a quick note at 29th of March 2024; the current version source code is partially messy and not properly commented. Sorry for that, I was working when tired and just aimed at a quick upgrade, adding terrain and a hermit cabin.
+PS. a quick note at 6th of April 2024; the current version source code is rather messy, and there are unused pieces of codes lingering around.
+    That is because I've been experimenting with different optimization methods, and leaving the various versions of test code just in case I'd need them later.
+    Also, many of the later additions are not properly commented, so it might be a pain to figure out how the code works.
+    In case you wish to copy, modify and extend it for your own needs, feel free to do so. And just send me a message if there is something you struggle to figure out.
 
 
 ## Background
@@ -23,14 +26,17 @@ PS. a quick note at 29th of March 2024; the current version source code is parti
 ## Thanks and other info
 
 Many of the core concepts based on https://github.com/antzGames/ModelInstancedRendering
-and https://github.com/libgdx/libgdx/blob/master/tests/gdx-tests/src/com/badlogic/gdx/tests/gles3/InstancedRenderingTest.java
+
+and
+
+https://github.com/libgdx/libgdx/blob/master/tests/gdx-tests/src/com/badlogic/gdx/tests/gles3/InstancedRenderingTest.java
 
 Inspired by discussions on libGDX Discord around early March 2024
 Also thanks to user with alias casper who originally introduced the concept of impostors to me. My approach is heavily based on what I learnt with discussions with them.
 
-A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/tommyettinger/gdx-liftoff).
+---
 
-Project template included simple launchers and an `ApplicationAdapter` extension with GUI created using the [VisUI](https://github.com/kotcrab/vis-ui) library.
+A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/tommyettinger/gdx-liftoff).
 
 ## Platforms
 

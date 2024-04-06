@@ -158,6 +158,11 @@ public class MapChunk {
         boundingBox.getCenter(center);
     }
 
+    public void dispose()
+    {
+        if (terrain != null) terrain.dispose();
+    }
+
     public float[] getTreeTypePositions(int type)
     {
         return positions[type].data;
@@ -166,12 +171,6 @@ public class MapChunk {
 
     public float getDistance(Vector3 from)
     {
-        /*
-        distanceFromCamera = abs(from.dst(boundingBox.max));
-        distanceFromCamera = min(abs(from.dst(center)),abs(from.dst(boundingBox.max)));
-        distanceFromCamera = min(abs(from.dst(boundingBox.min)),abs(from.dst(boundingBox.max)));
-         */
-
         distanceFromCamera = abs(from.dst(center));
         return distanceFromCamera;
     }

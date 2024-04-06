@@ -29,7 +29,7 @@ import com.enormouselk.sandbox.impostors.terrains.Terrain;
 
 public class DemoScreen implements Screen {
 
-    static final int terrainHeightMultiplier = 32;
+    static final int terrainHeightMultiplier = 64;
     public static final int TREE_TYPES_MAX = 3;
     public static final int TREE_TYPE_FIR = 0;
     public static final int TREE_TYPE_PINE = 1;
@@ -47,8 +47,8 @@ public class DemoScreen implements Screen {
     private InstancedShaderProviderGPU instancedShaderProvider;
     Environment environment;
 
-    private Terrain terrain;
-    private Renderable terrainRenderable;
+    //private Terrain terrain;
+    //private Renderable terrainRenderable;
     private ModelBatch batch;
     private SpriteBatch batch2D;
     private RenderContext context;
@@ -62,6 +62,7 @@ public class DemoScreen implements Screen {
     private FirstPersonCameraController controller;
     private Frustum camFrustum;
     private long startTime, updateTime, renderTime;
+    private long treesTotal;
 
     private String cachedDecalDistance;
     private String cachedDecalPercentDistance;
@@ -72,7 +73,6 @@ public class DemoScreen implements Screen {
     //But that is not my top priority today...
 
     final LodModel[] lodModels = new LodModel[TREE_TYPES_MAX];
-    //private final LodModel[] lodModels = new LodModel[TREE_TYPES_MAX];
 
     private Model cabinModel;
     private ModelInstance cabinInstance;
@@ -80,7 +80,6 @@ public class DemoScreen implements Screen {
     private Vector3 cabinPosition;
 
 
-    //private Vector3 vec3Temp;
     private Vector2 cameraLocation2D;
     private LodModel lodModel;
 
@@ -104,10 +103,6 @@ public class DemoScreen implements Screen {
     //an array to hold the type of each tree
 
 
-    //private Vector3[] treePositions;
-    //an array to hold the position for each and every tree
-    //private final int[] treeTypeInstanceCount = new int[TREE_TYPES_MAX];
-    //and yet another array to store the amount of each tree type
 
     MapChunk[][] world;
     Array<MapChunk> chunksToBeRendered;
@@ -147,17 +142,10 @@ public class DemoScreen implements Screen {
         worldSizeHalf = maxDistance / 2f;
         counter = 0;
 
-        GPUheavyThreshold = maxDistance * 2;
+        GPUheavyThreshold = 1000f;
 
         this.lodSettings = new Array<>(lodSettings);
-
-
         disableRendering = true;
-
-        /*
-        chunksX = MathUtils.ceil(maxDistance / chunkSize);
-        chunksY = chunksX;
-         */
 
         chunksX = worldSize;
         chunksY = worldSize;
@@ -222,11 +210,13 @@ public class DemoScreen implements Screen {
 
         lodModel = lodModels[0];
 
-        impostorShader.init();
-        impostorShader.init(impostorShader.program,lodModel.renderables[lodModel.decalIndex]);
+        if (lodModel.getDecalDistance() > 0) {
+            impostorShader.init();
+            impostorShader.init(impostorShader.program, lodModel.renderables[lodModel.decalIndex]);
 
-        impostorShaderGPUheavy.init();
-        impostorShaderGPUheavy.init(impostorShaderGPUheavy.program,lodModel.renderables[lodModel.decalIndex]);
+            impostorShaderGPUheavy.init();
+            impostorShaderGPUheavy.init(impostorShaderGPUheavy.program, lodModel.renderables[lodModel.decalIndex]);
+        }
 
         context = new RenderContext(new DefaultTextureBinder(DefaultTextureBinder.LRU, 1));
 
@@ -237,7 +227,7 @@ public class DemoScreen implements Screen {
         if (cabinInstance != null)
         {
             cabinInstance.transform.setTranslation(cabinPosition);
-            cabinInstance.transform.rotate(Vector3.Y,180f);
+            //cabinInstance.transform.rotate(Vector3.Y,180f);
             //cabinInstance.transform.setToLookAt(Vector3.Z,Vector3.Y);
         }
 
@@ -318,7 +308,7 @@ public class DemoScreen implements Screen {
                 LodModel lodModel = lodModels[i];
                 int lodIndex = lodModel.getLODlevel(mapChunk.distanceFromCamera);
 
-                if (lodIndex < lodModel.decalIndex) {
+                if (lodIndex < lodModel.LOD_MAX) {
 
                     if (!haveModels) {
                         instancedTreeShader.begin(camera, context);
@@ -383,26 +373,27 @@ public class DemoScreen implements Screen {
         if (!chunksToBeRenderedAsImpostors.isEmpty()) {
 
             impostorShader.begin(camera,context);
-            //impostorShader.begin(camera,context);
 
             cameraLocation2D.set(camera.position.x,camera.position.z);
 
             for (int i = 0; i < TREE_TYPES_MAX; i++) {
 
                 LodModel lodModel = lodModels[i];
-
-                lodModel.texture.bind();
+                lodModel.getImpostor().userData = null;
 
                 for (MapChunk mapChunk : chunksToBeRenderedAsImpostors) {
                         float[] data = mapChunk.getTreeTypePositions(i);
                         if (data == null) continue;
 
-                        lodModel.getImpostor().userData = mapChunk.getTransform(cameraLocation2D,camera.position,lodModel);
-                        lodModel.render(impostorShader, lodModel.decalIndex, data);
-                        //lodModel.addInstanceData(lodModel.decalIndex, data);
+                        if (lodModel.getImpostor().userData == null) {
+                            lodModel.texture.bind();
+                            lodModel.getImpostor().userData = mapChunk.getTransform(cameraLocation2D, camera.position, lodModel);
+                        }
+                        //lodModel.render(impostorShader, lodModel.decalIndex, data);
+                        lodModel.addInstanceData(lodModel.optimizedDecalIndex, data);
                     }
 
-                //lodModel.flushInstanceData(lodModel.decalIndex);
+                lodModel.flushInstanceData(lodModel.optimizedDecalIndex);
             }
             impostorShader.end();
         }
@@ -472,14 +463,22 @@ public class DemoScreen implements Screen {
         font.draw(batch2D,"DECAL DISTANCE : " + getDecalDistanceAsPercentString() +" = " +getDecalDistanceAsString(), 10, 192);
 
 
+        treesTotal = 0;
         for (int ii = 0; ii < 3; ii++) {
             lodModel = lodModels[ii];
-            font.draw(batch2D,lodModel.ID,10, 80+ii*32);
+            font.draw(batch2D,lodModel.ID,10, 84+ii*32);
             for (int i = 0; i < LOD_MAX; i++) {
-                font.draw(batch2D, "LOD"+i+": " + lodModel.debugCounters[i] , 140 + (i*220), 80+ii*32);
+                font.draw(batch2D, "LOD"+i+": " + lodModel.debugCounters[i] , 140 + (i*220), 84+ii*32);
+                treesTotal += lodModel.debugCounters[i];
             }
-            font.draw(batch2D,"DECALS: " + lodModel.debugCounters[lodModel.decalIndex] , 140 + (LOD_MAX*220), 80+ii*32);
+
+            if (lodModel.decalIndex > 0) {
+                font.draw(batch2D, "DECALS: " + lodModel.debugCounters[lodModel.decalIndex], 140 + (LOD_MAX * 220), 84 + ii * 32);
+                treesTotal += lodModel.debugCounters[lodModel.decalIndex];
+            }
         }
+
+        font.draw(batch2D,"TREES TOTAL: "+treesTotal,10,30);
 
 
 
@@ -552,30 +551,13 @@ public class DemoScreen implements Screen {
         MapChunk.owner = this;
 
         int worldSizeInTiles = MathUtils.round(maxDistance / tileSize);
-        //Noise noise = new Noise();
+
         Noise noise = new Noise(1337,1f/64f,Noise.SIMPLEX,1,2.5f,0.5f);
-        //int tt;
+
         MapChunk mapChunk;
 
-
-        /*
-        int heightMapNodes = worldSizeInTiles+1;
-
-        float[] heightMapData = new float[heightMapNodes * heightMapNodes];
-
-        for (int x = 0; x < heightMapNodes; x++) {
-            for (int y = 0; y < heightMapNodes ; y++) {
-                float ix = x * tileSize;
-                float iz = y * tileSize;
-                heightMapData[y*heightMapNodes+x] =  noise.getConfiguredNoise(ix / tileSize, iz / tileSize) * terrainHeightMultiplier;
-            }
-        }
-        terrain = new HeightMapTerrain(heightMapData, heightMapNodes, 1f);
-
-         */
-
-        int cabinTileX = MathUtils.random(0,worldSizeInTiles);
-        int cabinTileY = MathUtils.random(0,worldSizeInTiles);
+        int cabinTileX = (MathUtils.random(0,worldSizeInTiles) + MathUtils.random(0,worldSizeInTiles) + MathUtils.random(0,worldSizeInTiles) + MathUtils.random(0,worldSizeInTiles)) / 4;
+        int cabinTileY = (MathUtils.random(0,worldSizeInTiles) + MathUtils.random(0,worldSizeInTiles) + MathUtils.random(0,worldSizeInTiles) + MathUtils.random(0,worldSizeInTiles)) / 4;
 
         int chunkOffsetX,chunkOffsetY;
 
@@ -776,9 +758,15 @@ public class DemoScreen implements Screen {
             lodModels[i].dispose();
         }
 
+        for (int x = 0; x < chunksX; x++) {
+            for (int y = 0; y < chunksY; y++) {
+                world[x][y].dispose();
+            }
+        }
+
         if (cabinModel != null) cabinModel.dispose();
 
-        if (terrain != null) terrain.dispose();
+        //if (terrain != null) terrain.dispose();
 
         instancedShaderProvider.dispose();
     }

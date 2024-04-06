@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL32;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
@@ -25,14 +26,17 @@ public class MainMenu implements Screen {
     private final Skin skin;
     private Camera uiCam;
 
-    private final int defaultWorldSize = 16;
-    private final int maxWorldSize = 32;
+    private final int defaultWorldSize = 8;
+    private final int absoluteMaxWorldSize = 32;
+    private final double absoluteMaxTrees = Integer.MAX_VALUE;
+    private int maxWorldSize = 32;
+    private final int minWorldSize = 1;
     private final int defaultTreeDensity = 5;
     private final int maxTreeDensity = 9;
     private final int defaultImpostorDistance = 50;
-    private final int defaultChunkSize = 64;
-    private final int minChunkSize = 8;
-    private final int maxChunkSize = 512;
+    private final int defaultChunkSize = 4;
+    private final int minChunkSize = 1;
+    private final int maxChunkSize = 8;
 
     private final int defaultInstanceBufferSize = 32;
     private final int minInstanceBufferSize = 4;
@@ -110,23 +114,23 @@ public class MainMenu implements Screen {
         window = new Table(skin);
         root.add(window).center();
 
-        sliderWorldSize = new Slider(1,maxWorldSize,1,false,skin);
+        sliderWorldSize = new Slider(minWorldSize,maxWorldSize,1,false,skin);
         sliderWorldSize.setValue(defaultWorldSize);
-        legendWorldSize = new Label(String.format(defaultLocale,sizeTemplate,defaultWorldSize * defaultInstanceBufferSize * 10),skin);
+        legendWorldSize = new Label(String.format(defaultLocale,sizeTemplate,defaultWorldSize * defaultChunkSize * 10),skin);
         //final Label legendWorldSize = new Label(" ");
 
         sliderTreeDensity = new Slider(1,maxTreeDensity,1,false,skin);
         sliderTreeDensity.setValue(defaultTreeDensity);
-        legendTreeDensity = new Label(String.format(defaultLocale,densityTemplate,maxWorldSize*maxWorldSize * maxTreeDensity),skin);
+        legendTreeDensity = new Label(String.format(defaultLocale,densityTemplate,(defaultChunkSize*defaultWorldSize)*(defaultChunkSize*defaultWorldSize)* defaultTreeDensity),skin);
         //final Label legendTreeDensity = new Label("");
 
         sliderImpostorDistance = new Slider(10,100,10,false,skin);
         sliderImpostorDistance.setValue(defaultImpostorDistance);
         legendImpostorDistance = new Label(String.format(defaultLocale,distanceTemplate,defaultImpostorDistance),skin);
 
-        sliderChunkSize = new Slider(minChunkSize,maxChunkSize,8,false,skin);
+        sliderChunkSize = new Slider(minChunkSize,maxChunkSize,1,false,skin);
         sliderChunkSize.setValue(defaultChunkSize);
-        legendChunkSize = new Label(String.format(defaultLocale,amountTemplate,defaultChunkSize),skin);
+        legendChunkSize = new Label(String.format(defaultLocale,amountTemplate,convertSize(defaultChunkSize)),skin);
 
         sliderBufferSize = new Slider(minInstanceBufferSize,maxInstanceBufferSize,4,false,skin);
         sliderBufferSize.setValue(defaultInstanceBufferSize);
@@ -139,13 +143,7 @@ public class MainMenu implements Screen {
         sliderWorldSize.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                int worldSizeInChunks = (int) sliderWorldSize.getValue();
-                int chunkSize = (int) sliderChunkSize.getValue();
-                int worldSizeInTiles = worldSizeInChunks * chunkSize;
-                int worldSize = worldSizeInTiles*10;
-                int treeDensity = (int) sliderTreeDensity.getValue();
-                legendWorldSize.setText(String.format(defaultLocale,sizeTemplate,worldSize));
-                legendTreeDensity.setText(String.format(defaultLocale,densityTemplate,(worldSizeInTiles * worldSizeInTiles * treeDensity)));
+                setChunkAndWorldSize();
             }
         });
 
@@ -153,7 +151,7 @@ public class MainMenu implements Screen {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 int worldSizeInChunks = (int) sliderWorldSize.getValue();
-                int chunkSize = (int) sliderChunkSize.getValue();
+                int chunkSize = convertSize(sliderChunkSize.getValue());
                 int worldSizeInTiles = worldSizeInChunks * chunkSize;
                 int treeDensity = (int) sliderTreeDensity.getValue();
                 legendTreeDensity.setText(String.format(defaultLocale,densityTemplate,(worldSizeInTiles * worldSizeInTiles * treeDensity)));
@@ -170,14 +168,7 @@ public class MainMenu implements Screen {
         sliderChunkSize.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                legendChunkSize.setText(String.format(defaultLocale,amountTemplate,(int) sliderChunkSize.getValue()));
-                int worldSizeInChunks = (int) sliderWorldSize.getValue();
-                int chunkSize = (int) sliderChunkSize.getValue();
-                int worldSizeInTiles = worldSizeInChunks * chunkSize;
-                int worldSize = worldSizeInTiles*10;
-                int treeDensity = (int) sliderTreeDensity.getValue();
-                legendWorldSize.setText(String.format(defaultLocale,sizeTemplate,worldSize));
-                legendTreeDensity.setText(String.format(defaultLocale,densityTemplate,(worldSizeInTiles * worldSizeInTiles * treeDensity)));
+                setChunkAndWorldSize();
             }
         });
 
@@ -198,16 +189,7 @@ public class MainMenu implements Screen {
         resetButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                sliderWorldSize.setValue(defaultWorldSize);
-                sliderChunkSize.setValue(defaultChunkSize);
-                sliderTreeDensity.setValue(defaultTreeDensity);
-                sliderImpostorDistance.setValue(defaultImpostorDistance);
-                sliderBufferSize.setValue(defaultInstanceBufferSize);
-                selectTextureSize.setSelectedIndex(0);
-
-                checkBoxTerrain.setChecked(true);
-                checkBoxOptimized.setChecked(true);
-                checkBoxImpostors.setChecked(true);
+                setDefaultPreset();
                 //resetButton.focusLost();
             }
         });
@@ -218,12 +200,22 @@ public class MainMenu implements Screen {
             @Override
             public void changed (ChangeEvent event, Actor actor) {
                 setDefaultModels(checkBoxOptimized.isChecked());
-                owner.startDemo(lodSettings, sliderWorldSize.getValue(), sliderTreeDensity.getValue(), sliderImpostorDistance.getValue() / 100f,selectTextureSize.getSelected(), (int) sliderChunkSize.getValue(), (int) sliderBufferSize.getValue() * instanceBufferBaseSize,checkBoxTerrain.isChecked());
+                owner.startDemo(lodSettings, sliderWorldSize.getValue(), sliderTreeDensity.getValue(), sliderImpostorDistance.getValue() / 100f,selectTextureSize.getSelected(), convertSize(sliderChunkSize.getValue()), (int) sliderBufferSize.getValue() * instanceBufferBaseSize,checkBoxTerrain.isChecked());
             }
         });
 
 
 
+    }
+
+    private int convertSize(float raw)
+    {
+        int max = (int)raw;
+        int ret = 4;
+        for (int i = 0; i < max; i++) {
+            ret = ret * 2;
+        }
+        return ret;
     }
 
     private void setDefaultModels(boolean optimized)
@@ -245,6 +237,36 @@ public class MainMenu implements Screen {
         }
     }
 
+    private void setChunkAndWorldSize()
+    {
+        int chunkSize = convertSize(sliderChunkSize.getValue());
+
+        legendChunkSize.setText(String.format(defaultLocale,amountTemplate,chunkSize));
+        int worldSizeInChunks = (int) sliderWorldSize.getValue();
+
+        int worldSizeInTiles = worldSizeInChunks * chunkSize;
+        int worldSize = worldSizeInTiles*10;
+        int treeDensity = (int) sliderTreeDensity.getValue();
+
+        int computeMax = (int)Math.sqrt(absoluteMaxTrees / treeDensity);
+        long trees = (long) worldSizeInTiles * worldSizeInTiles * treeDensity;
+        if (trees > absoluteMaxTrees)
+        {
+            maxWorldSize = computeMax / chunkSize;
+            sliderWorldSize.setValue(maxWorldSize);
+
+            worldSizeInChunks = maxWorldSize;
+
+            worldSizeInTiles = worldSizeInChunks * chunkSize;
+            worldSize = worldSizeInTiles*10;
+
+            trees = worldSizeInTiles * worldSizeInTiles * treeDensity;
+        }
+
+        legendWorldSize.setText(String.format(defaultLocale,sizeTemplate,worldSize));
+        legendTreeDensity.setText(String.format(defaultLocale,densityTemplate,trees));
+    }
+
     @Override
     public void show() {
 
@@ -253,59 +275,68 @@ public class MainMenu implements Screen {
 
         window.clear();
 
-        window.defaults().padLeft(8).padTop(6);
+        window.defaults().pad(8);
 
-        window.add("If you plan anything like a 3D game with lots of objects you can try different parameters ").colspan(3).row();
-        window.add("to find out how much stuff there can be without impairing the performance.").colspan(3).row();
+        window.add("If you plan anything like a 3D game with lots of objects you can try different parameters to find out how much stuff").colspan(3).row();
+        window.add("there can be without impairing the performance.").padTop(2).colspan(3).row();
+        window.add("Maximum amount of trees is capped to "+String.format(defaultLocale,amountTemplate,(int)absoluteMaxTrees)).padTop(2).colspan(3).row();
+
+        window.add(" ");
+        window.add("F1 = HELP").row();
+
+        window.add(" ");
+        window.add("1 = Low end preset").row();
+
+        window.add(" ");
+        window.add("2 = Reset default settings").row();
+
+        window.add(" ");
+        window.add("3 = Max everything").row();
+
+        window.add(" ");
+        window.add("4 = Unoptimized preset").row();
 
         window.add("Tree density : ").right().padTop(32);
-        window.add(sliderTreeDensity).padTop(32);
+        window.add(sliderTreeDensity).growX().padTop(32);
         window.add(legendTreeDensity).left().padTop(32).row();
 
         window.add("Chunk size : ").right();
-        window.add(sliderChunkSize);
+        window.add(sliderChunkSize).growX();
         window.add(legendChunkSize).left().row();
 
         window.add("World size : ").right();
-        window.add(sliderWorldSize);
+        window.add(sliderWorldSize).growX();
         window.add(legendWorldSize).left().row();
 
         window.add("Impostor distance : ").right();
-        window.add(sliderImpostorDistance);
+        window.add(sliderImpostorDistance).growX();
         window.add(legendImpostorDistance).left().row();
 
         window.add("Buffer size : ").right();
-        window.add(sliderBufferSize);
+        window.add(sliderBufferSize).growX();
         window.add(legendInstanceBufferSize).left().row();
-
 
 
         window.add("Texture size :").right();
         window.add(selectTextureSize).left().row();
 
         checkBoxOptimized.setChecked(true);
-        window.add(checkBoxOptimized).colspan(2).right().row();
+        window.add(" ");
+        window.add(checkBoxOptimized).left().row();
 
+        window.add(" ");
         checkBoxImpostors.setChecked(true);
-        window.add(checkBoxImpostors).colspan(2).right().row();
+        window.add(checkBoxImpostors).left().row();
 
+        window.add(" ");
         checkBoxTerrain.setChecked(true);
-        window.add(checkBoxTerrain).colspan(2).right().row();
+        window.add(checkBoxTerrain).left().row();
 
         window.add(resetButton).padTop(32).padBottom(32).padRight(32);
         window.add(startButton).padTop(32).padBottom(32).row();
 
         //window.add("Impostor distance determines at what distance 3D models will be displayed at 2D impostors.").colspan(3).row();
-        window.add("The impostor distance is relative to the chosen world size, so if your world size is 1000 m").colspan(3).padTop(4).row();
-        window.add("and Impostor distance is 50% models more than 500m from camera are displayed as impostors.").colspan(3).padTop(4).row();
-        window.add("Increasing instance buffer size might improve performance but is sure to eat more memory.").colspan(3).padTop(4).row();
-        window.add("3D models have also their own LOD versions, and the demo uses 3 levels;").colspan(3).padTop(8).row();
-        window.add("LOD0 = full detail, for objects closer than 1/4 of impostor distance").colspan(3).padTop(4).row();
-        window.add("LOD1 = medium detail, for objects closer than 1/2 of impostor distance").colspan(3).padTop(4).row();
-        window.add("LOD2 = reduced detail, for objects closer than impostor distance").colspan(3).padTop(4).row();
-        window.add("Impostor = an image of 3D model flattened to 2D surface").colspan(3).padTop(4).row();
-        window.add("Each impostor uses one texture of the given size - the bigger the size the better the quality.").colspan(3).padTop(4).row();
-        window.add("- 5th of April 2024 Erkka Lehmus / Enormous Elk -").colspan(3).padTop(16).padBottom(32).row();
+       
 
         window.setBackground("cyan");
         window.pack();
@@ -321,10 +352,87 @@ public class MainMenu implements Screen {
     private void setLowEndPreset()
     {
         sliderBufferSize.setValue(32f);
-        sliderChunkSize.setValue(8f);
+        sliderChunkSize.setValue(1f);
         sliderWorldSize.setValue(16f);
         sliderTreeDensity.setValue(5f);
         sliderImpostorDistance.setValue(10f);
+        
+        checkBoxTerrain.setChecked(true);
+        checkBoxOptimized.setChecked(true);
+        checkBoxImpostors.setChecked(true);
+        
+    }
+    
+    private void setDefaultPreset()
+    {
+        sliderWorldSize.setValue(defaultWorldSize);
+        sliderChunkSize.setValue(defaultChunkSize);
+        sliderTreeDensity.setValue(defaultTreeDensity);
+        sliderImpostorDistance.setValue(defaultImpostorDistance);
+        sliderBufferSize.setValue(defaultInstanceBufferSize);
+        selectTextureSize.setSelectedIndex(0);
+
+        checkBoxTerrain.setChecked(true);
+        checkBoxOptimized.setChecked(true);
+        checkBoxImpostors.setChecked(true);
+    }
+
+    private void setMaxPreset()
+    {
+        sliderWorldSize.setValue(15);
+        sliderChunkSize.setValue(maxChunkSize);
+        sliderTreeDensity.setValue(maxTreeDensity);
+        sliderImpostorDistance.setValue(100);
+        sliderBufferSize.setValue(maxInstanceBufferSize);
+        selectTextureSize.setSelectedIndex(0);
+
+        checkBoxTerrain.setChecked(true);
+        checkBoxOptimized.setChecked(true);
+        checkBoxImpostors.setChecked(true);
+    }
+
+    private void setUnoptimizedPreset()
+    {
+        sliderWorldSize.setValue(minWorldSize);
+        sliderChunkSize.setValue(maxChunkSize);
+        sliderTreeDensity.setValue(maxTreeDensity);
+        sliderImpostorDistance.setValue(100);
+        sliderBufferSize.setValue(maxInstanceBufferSize);
+        selectTextureSize.setSelectedIndex(0);
+
+        checkBoxTerrain.setChecked(true);
+        checkBoxOptimized.setChecked(false);
+        checkBoxImpostors.setChecked(false);
+    }
+    
+    private void showHelp()
+    {
+        Dialog helpDialog = new Dialog("HELP",skin);
+
+        helpDialog.getContentTable().add("The world is made up of chunks. Model culling is not performed per tree, but per chunk").colspan(3).padTop(16).row();
+        helpDialog.getContentTable().add("If the world is relatively small, say 1000 m, you could set chunk size to 1000m and world size to 1.").colspan(3).padTop(4).row();
+        helpDialog.getContentTable().add("Also, LOD level is chosen per chunk, not per individual tree.").colspan(3).padTop(4).row();
+        helpDialog.getContentTable().add("If you wish to test if LOD optimization improves performance, you need to set chunk size smaller.").colspan(3).padTop(4).row();
+        helpDialog.getContentTable().add("Although I'd guess that for a modern gpu LOD optimization would matter only if the tree models were.").colspan(3).padTop(4).row();
+        helpDialog.getContentTable().add("lot more detailed. I've been planning a GUI to pick models from your local hard drive, but didn't have time for that.").colspan(3).padTop(4).row();
+        helpDialog.getContentTable().add("So experimenting with more complex models requires editing the source code.").colspan(3).padTop(4).row();
+
+        helpDialog.getContentTable().add("The impostor distance is relative to the chosen world size, so if your world size is 1000 m").colspan(3).padTop(16).row();
+        helpDialog.getContentTable().add("and Impostor distance is 50% models more than 500m from camera are displayed as impostors.").colspan(3).padTop(4).row();
+
+        helpDialog.getContentTable().add("Increasing instance buffer size might improve performance but is sure to eat more memory.").colspan(3).padTop(16).row();
+
+        helpDialog.getContentTable().add("3D models have also their own LOD versions, and the demo uses 3 levels;").colspan(3).padTop(16).row();
+        helpDialog.getContentTable().add("LOD0 = full detail, for objects closer than 1/4 of impostor distance").colspan(3).padTop(4).row();
+        helpDialog.getContentTable().add("LOD1 = medium detail, for objects closer than 1/2 of impostor distance").colspan(3).padTop(4).row();
+        helpDialog.getContentTable().add("LOD2 = reduced detail, for objects closer than impostor distance").colspan(3).padTop(4).row();
+        helpDialog.getContentTable().add("Impostor = an image of 3D model flattened to 2D surface").colspan(3).padTop(4).row();
+        helpDialog.getContentTable().add("Each impostor uses one texture of the given size - the bigger the size the better the quality.").colspan(3).padTop(4).row();
+        helpDialog.getContentTable().add("- 6th of April 2024 Erkka Lehmus / Enormous Elk -").colspan(3).padTop(16).padBottom(32).row();
+
+        helpDialog.button("OK");
+
+        helpDialog.show(stage);
     }
 
     @Override
@@ -332,7 +440,7 @@ public class MainMenu implements Screen {
         //Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
         //Gdx.gl.glClear(GL32.GL_COLOR_BUFFER_BIT);
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) setLowEndPreset();
+        handleInput();
 
         ScreenUtils.clear(Color.SKY);
 
@@ -340,6 +448,15 @@ public class MainMenu implements Screen {
         stage.act(delta);
         //stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
         stage.draw();
+    }
+    
+    private void handleInput()
+    {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) showHelp();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) setLowEndPreset();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) setDefaultPreset();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) setMaxPreset();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_4)) setUnoptimizedPreset();
     }
 
     @Override

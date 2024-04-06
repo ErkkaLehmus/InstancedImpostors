@@ -373,7 +373,8 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
     public static class ImpostorShader extends BaseShader
     {
         @Override
-        public void begin(Camera camera, RenderContext context) {
+        public void
+        begin(Camera camera, RenderContext context) {
             program.bind();
             program.setUniformMatrix("u_projViewTrans", camera.combined);
             context.setDepthTest(GL32.GL_LESS);
@@ -400,16 +401,28 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
 
         }
 
-        @Override
+
         public void render(Renderable renderable) {
             MapChunk.DecalTransform decalTransform = (MapChunk.DecalTransform) renderable.userData;
-
             program.setUniformMatrix("u_impostorRotationMatrix", decalTransform.transform);
             program.setUniformf("u_moveY", decalTransform.moveY);
             program.setUniform2fv("u_uvOffset", decalTransform.uvOffset,0,2);
             program.setUniformi("u_texture", 0);
             super.render(renderable);
         }
+
+
+
+        /*
+        public void render(Renderable renderable, MapChunk.DecalTransform decalTransform) {
+            program.setUniformMatrix("u_impostorRotationMatrix", decalTransform.transform);
+            program.setUniformf("u_moveY", decalTransform.moveY);
+            program.setUniform2fv("u_uvOffset", decalTransform.uvOffset,0,2);
+            program.setUniformi("u_texture", 0);
+            super.render(renderable);
+        }
+
+         */
 
         @Override
         public int compareTo(Shader other) {

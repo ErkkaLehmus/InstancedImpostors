@@ -39,6 +39,7 @@ public class Lwjgl3Launcher {
 
         configuration.setBackBufferConfig(8,8,8,8,32,0,4);
         //for anti-aliasing we set the samples to 4
+        //depth if also increased to 32 making long-range depth test more accurate
         //not using anti-aliasing might improve performance at the cost of quality.
         //this seems to cause problems on my hardware, so if you encounter strange crashes try commenting out line 39
 
