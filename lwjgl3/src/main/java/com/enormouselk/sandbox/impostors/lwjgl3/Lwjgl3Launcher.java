@@ -5,6 +5,7 @@ import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.graphics.glutils.HdpiMode;
+import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.enormouselk.sandbox.impostors.ImpostorDemo;
 
 /** Launches the desktop (LWJGL3) application. */
@@ -15,7 +16,31 @@ public class Lwjgl3Launcher {
     }
 
     private static Lwjgl3Application createApplication() {
-        return new Lwjgl3Application(new ImpostorDemo(), getDefaultConfiguration());
+
+        ShaderProgram.prependFragmentCode = "#version 100\n";
+        ShaderProgram.prependVertexCode = "#version 100\n";
+
+        ImpostorDemo demo = new ImpostorDemo();
+        Lwjgl3ApplicationConfiguration configuration = getDefaultConfiguration();
+        Lwjgl3Application app;
+        try {
+            app = new Lwjgl3Application(demo,configuration);
+        } catch (Exception e) {
+            if (e.getMessage().contains("create window"))
+            {
+                //let's try a mac-friendly configuration
+                configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL32,3,2);
+                try {
+                    app = new Lwjgl3Application(demo,configuration);
+                } catch (Exception e2) {
+                    throw new RuntimeException(e2);
+                }
+
+            } else throw new RuntimeException(e);
+        }
+
+        return app;
+        //return new Lwjgl3Application(new ImpostorDemo(), getDefaultConfiguration());
     }
 
     private static Lwjgl3ApplicationConfiguration getDefaultConfiguration() {
