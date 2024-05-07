@@ -20,6 +20,7 @@ PS. a quick note at 6th of April 2024; the current version source code is rather
     Also, many of the later additions are not properly commented, so it might be a pain to figure out how the code works.
     In case you wish to copy, modify and extend it for your own needs, feel free to do so. And just send me a message if there is something you struggle to figure out.
 
+PPS. at 7th of May 2024; the source code is still a mess, as I've been busy with other things. Now just adding a quick patch trying to figure out how to best handle different gles formats and emulations on different backends about which I know next to nothing =)
 
 ## Background
 

@@ -3,11 +3,13 @@ package com.enormouselk.sandbox.impostors;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.GL32;
+import com.badlogic.gdx.graphics.g3d.Attributes;
 import com.badlogic.gdx.graphics.g3d.Environment;
 import com.badlogic.gdx.graphics.g3d.Renderable;
 import com.badlogic.gdx.graphics.g3d.Shader;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.attributes.DirectionalLightsAttribute;
+import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.shaders.BaseShader;
 import com.badlogic.gdx.graphics.g3d.shaders.DefaultShader;
@@ -53,8 +55,8 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
     public void dispose() {
         super.dispose();
 
-        ShaderProgram.prependVertexCode = "";
-        ShaderProgram.prependFragmentCode = "";
+        ShaderProgram.prependVertexCode = "#version 100\n";
+        ShaderProgram.prependFragmentCode = "#version 100\n";
 
 
         //if (snowShader != null) snowShader.dispose();
@@ -355,8 +357,8 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
             }
             init(program, renderable);
 
-            ShaderProgram.prependVertexCode = "";
-            ShaderProgram.prependFragmentCode = "";
+            ShaderProgram.prependVertexCode = "#version 100\n";
+            ShaderProgram.prependFragmentCode = "#version 100\n";
         }
 
         @Override
@@ -375,6 +377,7 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
         @Override
         public void
         begin(Camera camera, RenderContext context) {
+            this.context = context;
             program.bind();
             program.setUniformMatrix("u_projViewTrans", camera.combined);
             context.setDepthTest(GL32.GL_LESS);
@@ -402,13 +405,15 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
         }
 
 
-        public void render(Renderable renderable) {
+        public void render(Renderable renderable, Attributes combinedAttributes) {
             MapChunk.DecalTransform decalTransform = (MapChunk.DecalTransform) renderable.userData;
             program.setUniformMatrix("u_impostorRotationMatrix", decalTransform.transform);
             program.setUniformf("u_moveY", decalTransform.moveY);
             program.setUniform2fv("u_uvOffset", decalTransform.uvOffset,0,2);
-            program.setUniformi("u_texture", 0);
-            super.render(renderable);
+            //program.setUniformi("u_texture", 0);
+            final int unit = context.textureBinder.bind(((TextureAttribute)(renderable.material.get(TextureAttribute.Diffuse))).textureDescription);
+            program.setUniformi("u_texture", unit);
+            super.render(renderable,combinedAttributes);
         }
 
 
@@ -439,6 +444,7 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
     {
         @Override
         public void begin(Camera camera, RenderContext context) {
+            this.context = context;
             program.bind();
             program.setUniformMatrix("u_projViewTrans", camera.combined);
             float[] camPos = new float[3];
@@ -485,11 +491,13 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
             //MapChunk.DecalTransform decalTransform = (MapChunk.DecalTransform) renderable.userData;
             //program.setUniformf("u_moveY", decalTransform.moveY);
             program.setUniformf("u_moveY", decalData.halfHeight);
-
-            program.setUniformi("u_texture", 0);
             program.setUniform2fv("u_uvStepSize",decalData.uvStepSize,0,2);
             program.setUniform2fv("u_uvSteps",decalData.uvSteps,0,2);
             program.setUniform2fv("u_uvSize",decalData.uvSize,0,2);
+
+            //program.setUniformi("u_texture", 0);
+            final int unit = context.textureBinder.bind(((TextureAttribute)(renderable.material.get(TextureAttribute.Diffuse))).textureDescription);
+            program.setUniformi("u_texture", unit);
             super.render(renderable);
         }
 

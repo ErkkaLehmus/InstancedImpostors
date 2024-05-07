@@ -826,10 +826,10 @@ class LodModelBatch implements BatchOfFloats.FloatStreamer {
         FrameBuffer fbo = new FrameBuffer(Pixmap.Format.RGBA8888, fboWidth, fboHeight, true);
         fbo.begin();
 
-        Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
-        Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
-        Gdx.gl32.glCullFace(GL32.GL_BACK);
-        Gdx.gl32.glDisable(GL32.GL_BLEND);
+        Gdx.gl30.glEnable(GL32.GL_DEPTH_TEST);
+        Gdx.gl30.glEnable(GL32.GL_CULL_FACE);
+        Gdx.gl30.glCullFace(GL32.GL_BACK);
+        Gdx.gl30.glDisable(GL32.GL_BLEND);
 
         Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
         Gdx.gl.glClear(GL32.GL_COLOR_BUFFER_BIT | GL32.GL_DEPTH_BUFFER_BIT);

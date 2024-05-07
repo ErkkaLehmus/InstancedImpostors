@@ -49,8 +49,8 @@ public class InstancedShaderProviderCPU extends DefaultShaderProvider implements
     public void dispose() {
         super.dispose();
 
-        ShaderProgram.prependVertexCode = "";
-        ShaderProgram.prependFragmentCode = "";
+        ShaderProgram.prependVertexCode = "#version 100\n";
+        ShaderProgram.prependFragmentCode = "#version 100\n";
 
         //if (snowShader != null) snowShader.dispose();
     }

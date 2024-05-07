@@ -248,11 +248,11 @@ public class DemoScreen implements Screen {
 
     @Override
     public void show() {
-        Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
-        Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
-        //Gdx.gl32.glDisable(GL32.GL_CULL_FACE);
-        Gdx.gl32.glCullFace(GL32.GL_BACK);
-        Gdx.gl32.glDisable(GL32.GL_BLEND);
+        Gdx.gl30.glEnable(GL32.GL_DEPTH_TEST);
+        Gdx.gl30.glEnable(GL32.GL_CULL_FACE);
+        //Gdx.gl30.glDisable(GL32.GL_CULL_FACE);
+        Gdx.gl30.glCullFace(GL32.GL_BACK);
+        Gdx.gl30.glDisable(GL32.GL_BLEND);
     }
 
     @Override
@@ -352,7 +352,7 @@ public class DemoScreen implements Screen {
             for (int i = 0; i < TREE_TYPES_MAX; i++) {
 
                 LodModel lodModel = lodModels[i];
-                lodModel.texture.bind();
+                //lodModel.texture.bind();
 
                 for (MapChunk mapChunk : chunksToBeRenderedAsGPUheavyImpostors) {
                     float[] data = mapChunk.getTreeTypePositions(i);
@@ -386,7 +386,7 @@ public class DemoScreen implements Screen {
                         if (data == null) continue;
 
                         if (lodModel.getImpostor().userData == null) {
-                            lodModel.texture.bind();
+                            //lodModel.texture.bind();
                             lodModel.getImpostor().userData = mapChunk.getTransform(cameraLocation2D, camera.position, lodModel);
                         }
                         //lodModel.render(impostorShader, lodModel.decalIndex, data);
@@ -641,8 +641,8 @@ public class DemoScreen implements Screen {
          */
 
         if (showTerrain) {
-            ShaderProgram.prependVertexCode = "";
-            ShaderProgram.prependFragmentCode = "";
+            ShaderProgram.prependVertexCode = "#version 100\n";
+            ShaderProgram.prependFragmentCode = "#version 100\n";
 
             terrainShader = new DefaultShader(world[0][0].terrainRenderable);
             terrainShader.init();

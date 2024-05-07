@@ -127,11 +127,11 @@ public class DemoScreenCPU implements Screen {
 
         this.lodSettings = new Array<>(lodSettings);
 
-        Gdx.gl32.glEnable(GL32.GL_DEPTH_TEST);
-        Gdx.gl32.glEnable(GL32.GL_CULL_FACE);
-        //Gdx.gl32.glDisable(GL32.GL_CULL_FACE);
-        Gdx.gl32.glCullFace(GL32.GL_BACK);
-        Gdx.gl32.glDisable(GL32.GL_BLEND);
+        Gdx.gl30.glEnable(GL32.GL_DEPTH_TEST);
+        Gdx.gl30.glEnable(GL32.GL_CULL_FACE);
+        //Gdx.gl30.glDisable(GL32.GL_CULL_FACE);
+        Gdx.gl30.glCullFace(GL32.GL_BACK);
+        Gdx.gl30.glDisable(GL32.GL_BLEND);
 
 
         disableRendering = true;
@@ -481,8 +481,8 @@ public class DemoScreenCPU implements Screen {
             terrain = new HeightMapTerrain(heightMapData, worldSizeInTiles, 1f);
             terrainRenderable = terrain.getRenderable();
 
-            ShaderProgram.prependVertexCode = "";
-            ShaderProgram.prependFragmentCode = "";
+            ShaderProgram.prependVertexCode = "#version 100\n";
+            ShaderProgram.prependFragmentCode = "#version 100\n";
 
             Shader terrainShader = new DefaultShader(terrainRenderable);
             terrainShader.init();

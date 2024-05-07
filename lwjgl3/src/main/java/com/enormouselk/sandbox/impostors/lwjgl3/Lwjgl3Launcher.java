@@ -17,19 +17,27 @@ public class Lwjgl3Launcher {
 
     private static Lwjgl3Application createApplication() {
 
+        //first, we set the headers for libGDX default shaders, which the UI uses
+        //for some reason, linux is happy to run without setting these, but mac complains if the glsl version is not explicitly defined
+        //so here we go:
         ShaderProgram.prependFragmentCode = "#version 100\n";
         ShaderProgram.prependVertexCode = "#version 100\n";
 
         ImpostorDemo demo = new ImpostorDemo();
         Lwjgl3ApplicationConfiguration configuration = getDefaultConfiguration();
+
+        //And then we define the OpenGL ES version 3.0, emulation based on OpenGL version 4.5
+        configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL30,4,5);
+
         Lwjgl3Application app;
         try {
             app = new Lwjgl3Application(demo,configuration);
         } catch (Exception e) {
             if (e.getMessage().contains("create window"))
             {
-                //let's try a mac-friendly configuration
-                configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL32,3,2);
+                //apparently OpenGL 4.5 failed on the user machine
+                //Revert to 3.2, maybe it could work, then?
+                configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL30,3,2);
                 try {
                     app = new Lwjgl3Application(demo,configuration);
                 } catch (Exception e2) {
@@ -47,8 +55,15 @@ public class Lwjgl3Launcher {
         Lwjgl3ApplicationConfiguration configuration = new Lwjgl3ApplicationConfiguration();
         configuration.setTitle("InstancedImpostors Demo");
 
+        //7.5.2024 commented these away, setting the GL version at createApplication()
+        //Based on a quick search I couldn't figure out what would be the minimum gles version to support instanced rendering
+        //Wikipedia says it was added at OpenGL ES 3.0 : https://en.wikipedia.org/wiki/OpenGL_ES#OpenGL_ES_3.0
+        //And then there is an out-dated but once-official Apple documentation which states
+        //"Instanced drawing is available in the core OpenGL ES 3.0 API and in OpenGL ES 2.0 through the EXT_draw_instanced and EXT_instanced_arrays extensions."
+        //But I have no idea how to enable such an extension, and if it makes a difference depending on if the mac device supports Metal or not, so there is still a lot to learn!
+
         //this might be better if available - but is there a way to check availability at this stage?
-        configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL32,4,1);
+        //configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL32,4,1);
 
         //but do we need this for mac compatibility?
         //configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL32,3,2);
