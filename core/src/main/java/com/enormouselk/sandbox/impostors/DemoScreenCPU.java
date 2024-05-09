@@ -4,7 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL32;
+import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -127,11 +127,11 @@ public class DemoScreenCPU implements Screen {
 
         this.lodSettings = new Array<>(lodSettings);
 
-        Gdx.gl30.glEnable(GL32.GL_DEPTH_TEST);
-        Gdx.gl30.glEnable(GL32.GL_CULL_FACE);
-        //Gdx.gl30.glDisable(GL32.GL_CULL_FACE);
-        Gdx.gl30.glCullFace(GL32.GL_BACK);
-        Gdx.gl30.glDisable(GL32.GL_BLEND);
+        Gdx.gl30.glEnable(GL30.GL_DEPTH_TEST);
+        Gdx.gl30.glEnable(GL30.GL_CULL_FACE);
+        //Gdx.gl30.glDisable(GL30.GL_CULL_FACE);
+        Gdx.gl30.glCullFace(GL30.GL_BACK);
+        Gdx.gl30.glDisable(GL30.GL_BLEND);
 
 
         disableRendering = true;

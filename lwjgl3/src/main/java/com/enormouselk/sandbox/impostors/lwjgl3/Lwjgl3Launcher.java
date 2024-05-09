@@ -63,10 +63,10 @@ public class Lwjgl3Launcher {
         //But I have no idea how to enable such an extension, and if it makes a difference depending on if the mac device supports Metal or not, so there is still a lot to learn!
 
         //this might be better if available - but is there a way to check availability at this stage?
-        //configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL32,4,1);
+        //configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL30,4,1);
 
         //but do we need this for mac compatibility?
-        //configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL32,3,2);
+        //configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL30,3,2);
 
 
         configuration.useVsync(false);

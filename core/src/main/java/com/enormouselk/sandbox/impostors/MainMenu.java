@@ -3,10 +3,7 @@ package com.enormouselk.sandbox.impostors;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL32;
-import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -66,6 +63,7 @@ public class MainMenu implements Screen {
     private CheckBox checkBoxOptimized;
     private CheckBox checkBoxImpostors;
     private CheckBox checkBoxTerrain;
+    private CheckBox checkBoxUse150;
     SelectBox<Integer> selectTextureSize;
     private Label legendImpostorDistance;
     private Label legendTreeDensity;
@@ -184,6 +182,7 @@ public class MainMenu implements Screen {
         checkBoxOptimized = new CheckBox("Use optimized models",skin);
         checkBoxImpostors = new CheckBox("Use impostor decals",skin);
         checkBoxTerrain = new CheckBox("Show terrain",skin);
+        checkBoxUse150 = new CheckBox("Revert to glsl version 150",skin);
 
         resetButton = new TextButton("reset to defaults",skin);
         resetButton.addListener(new ChangeListener() {
@@ -200,7 +199,7 @@ public class MainMenu implements Screen {
             @Override
             public void changed (ChangeEvent event, Actor actor) {
                 setDefaultModels(checkBoxOptimized.isChecked());
-                owner.startDemo(lodSettings, sliderWorldSize.getValue(), sliderTreeDensity.getValue(), sliderImpostorDistance.getValue() / 100f,selectTextureSize.getSelected(), convertSize(sliderChunkSize.getValue()), (int) sliderBufferSize.getValue() * instanceBufferBaseSize,checkBoxTerrain.isChecked());
+                owner.startDemo(lodSettings, sliderWorldSize.getValue(), sliderTreeDensity.getValue(), sliderImpostorDistance.getValue() / 100f,selectTextureSize.getSelected(), convertSize(sliderChunkSize.getValue()), (int) sliderBufferSize.getValue() * instanceBufferBaseSize,checkBoxTerrain.isChecked(),checkBoxUse150.isChecked());
             }
         });
 
@@ -275,10 +274,11 @@ public class MainMenu implements Screen {
 
         window.clear();
 
-        window.defaults().pad(8);
+        window.defaults().pad(4);
 
         window.add("If you plan anything like a 3D game with lots of objects you can try different parameters to find out how much stuff").colspan(3).row();
         window.add("there can be without impairing the performance.").padTop(2).colspan(3).row();
+        window.add("Maximum OpenGL version supported by your device: "+getMaxOpenGLVersion()).padTop(2).colspan(3).row();
         window.add("Maximum amount of trees is capped to "+String.format(defaultLocale,amountTemplate,(int)absoluteMaxTrees)).padTop(2).colspan(3).row();
 
         window.add(" ");
@@ -331,6 +331,10 @@ public class MainMenu implements Screen {
         window.add(" ");
         checkBoxTerrain.setChecked(true);
         window.add(checkBoxTerrain).left().row();
+
+        window.add(" ");
+        checkBoxUse150.setChecked(false);
+        window.add(checkBoxUse150).left().row();
 
         window.add(resetButton).padTop(32).padBottom(32).padRight(32);
         window.add(startButton).padTop(32).padBottom(32).row();
@@ -428,7 +432,12 @@ public class MainMenu implements Screen {
         helpDialog.getContentTable().add("LOD2 = reduced detail, for objects closer than impostor distance").colspan(3).padTop(4).row();
         helpDialog.getContentTable().add("Impostor = an image of 3D model flattened to 2D surface").colspan(3).padTop(4).row();
         helpDialog.getContentTable().add("Each impostor uses one texture of the given size - the bigger the size the better the quality.").colspan(3).padTop(4).row();
-        helpDialog.getContentTable().add("- 6th of April 2024 Erkka Lehmus / Enormous Elk -").colspan(3).padTop(16).padBottom(32).row();
+
+        helpDialog.getContentTable().add("By default the demo uses glsl version 300, which is for GL ES 3.0").colspan(3).padTop(16).row();
+        helpDialog.getContentTable().add("Looks like some devices support instanced rendering in their OpenGL3.2, but are not able to fully emulate GL ES 3.0").colspan(3).padTop(4).row();
+        helpDialog.getContentTable().add("In such cases it might help to revert to glsl version 150 which corresponds to OpenGL 3.2").colspan(3).padTop(4).row();
+
+        helpDialog.getContentTable().add("- 9th of May 2024 Erkka Lehmus / Enormous Elk -").colspan(3).padTop(16).padBottom(32).row();
 
         helpDialog.button("OK");
 
@@ -438,7 +447,7 @@ public class MainMenu implements Screen {
     @Override
     public void render(float delta) {
         //Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
-        //Gdx.gl.glClear(GL32.GL_COLOR_BUFFER_BIT);
+        //Gdx.gl.glClear(GL30.GL_COLOR_BUFFER_BIT);
 
         handleInput();
 
@@ -525,9 +534,14 @@ public class MainMenu implements Screen {
 
     private int getMaxTextureSize () {
         IntBuffer buffer = BufferUtils.newIntBuffer(16);
-        Gdx.gl.glGetIntegerv(GL32.GL_MAX_TEXTURE_SIZE, buffer);
+        Gdx.gl.glGetIntegerv(GL30.GL_MAX_TEXTURE_SIZE, buffer);
         int ret = buffer.get(0);
         return Math.min(ret,4096);
+    }
+
+    private String getMaxOpenGLVersion()
+    {
+        return Gdx.gl.glGetString(GL30.GL_VERSION);
     }
 
     private Array<Integer> getAvailableTextureSizes()

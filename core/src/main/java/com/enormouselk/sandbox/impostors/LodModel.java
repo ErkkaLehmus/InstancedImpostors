@@ -702,7 +702,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
     //a helper function to take a snapshot of the renderable, and clip the image to the pixmap
     private void clipDecal(Shader shader, RenderContext context, Camera tmpCamera, Renderable renderable, Pixmap clippedPixmap, int cropX, int cropY, int pxWidth, int pxHeight, int offsetX, int offsetY) {
         Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
-        Gdx.gl.glClear(GL32.GL_COLOR_BUFFER_BIT | GL32.GL_DEPTH_BUFFER_BIT);
+        Gdx.gl.glClear(GL30.GL_COLOR_BUFFER_BIT | GL30.GL_DEPTH_BUFFER_BIT);
 
         shader.begin(tmpCamera,context);
         shader.render(renderable);
@@ -860,15 +860,15 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         fbo.begin();
 
         /*
-        Gdx.gl30.glEnable(GL32.GL_DEPTH_TEST);
-        Gdx.gl30.glEnable(GL32.GL_CULL_FACE);
-        Gdx.gl30.glCullFace(GL32.GL_BACK);
-        Gdx.gl30.glDisable(GL32.GL_BLEND);
+        Gdx.gl30.glEnable(GL30.GL_DEPTH_TEST);
+        Gdx.gl30.glEnable(GL30.GL_CULL_FACE);
+        Gdx.gl30.glCullFace(GL30.GL_BACK);
+        Gdx.gl30.glDisable(GL30.GL_BLEND);
 
          */
 
         Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
-        Gdx.gl.glClear(GL32.GL_COLOR_BUFFER_BIT | GL32.GL_DEPTH_BUFFER_BIT);
+        Gdx.gl.glClear(GL30.GL_COLOR_BUFFER_BIT | GL30.GL_DEPTH_BUFFER_BIT);
 
 
         BaseShader shader = instancedShaderProvider.createInstancedShader(renderable);
@@ -1092,7 +1092,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
 
         //finally, we can make a renderable out of our instanced mesh!
         Renderable decalRenderable = new Renderable();
-        decalRenderable.meshPart.set("DECAL", mesh, 0, indices, GL32.GL_TRIANGLES);
+        decalRenderable.meshPart.set("DECAL", mesh, 0, indices, GL30.GL_TRIANGLES);
         decalRenderable.environment = renderable.environment;
         decalRenderable.worldTransform.idt();
         //decalRenderable.shader = instancedShaderProvider.createDecalShader(decalRenderable);
@@ -1133,7 +1133,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
         int indices = mesh.getNumIndices();
 
         Renderable renderable = new Renderable();
-        renderable.meshPart.set("Tree", mesh, 0, indices, GL32.GL_TRIANGLES);
+        renderable.meshPart.set("Tree", mesh, 0, indices, GL30.GL_TRIANGLES);
         renderable.environment = environment;
         renderable.worldTransform.idt();
         //renderable.shader = instancedShaderProvider.getShader(renderable);
@@ -1148,7 +1148,7 @@ class LodModel implements BatchOfFloats.FloatStreamer {
 
     private static int getMaxTextureSize () {
         IntBuffer buffer = BufferUtils.newIntBuffer(16);
-        Gdx.gl.glGetIntegerv(GL32.GL_MAX_TEXTURE_SIZE, buffer);
+        Gdx.gl.glGetIntegerv(GL30.GL_MAX_TEXTURE_SIZE, buffer);
         return buffer.get(0);
     }
 

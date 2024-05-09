@@ -2,7 +2,7 @@ package com.enormouselk.sandbox.impostors;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.GL32;
+import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.g3d.Attributes;
 import com.badlogic.gdx.graphics.g3d.Environment;
 import com.badlogic.gdx.graphics.g3d.Renderable;
@@ -21,6 +21,8 @@ import com.badlogic.gdx.math.Matrix3;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 
 public class InstancedShaderProviderGPU extends DefaultShaderProvider implements InstancedShaderProvider {
+
+    public static boolean use150 = false;
 
     DefaultShader.Config config;
 
@@ -75,7 +77,7 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
             public void begin(Camera camera, RenderContext context) {
                 program.bind();
                 program.setUniformMatrix("u_projViewTrans", camera.combined);
-                context.setDepthTest(GL32.GL_LESS);
+                context.setDepthTest(GL30.GL_LESS);
                 //context.setDepthTest(GL30.GL_LEQUAL);
 
                 ColorAttribute ambientLight = (ColorAttribute) renderable.environment.get(ColorAttribute.AmbientLight);
@@ -116,8 +118,18 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
 
             @Override
             public void init() {
-                ShaderProgram.prependVertexCode = "#version 300 es\n";
-                ShaderProgram.prependFragmentCode = "#version 300 es\n";
+
+                if (use150)
+                {
+                    ShaderProgram.prependVertexCode = "#version 150\n";
+                    ShaderProgram.prependFragmentCode = "#version 150\n";
+                }
+                else
+                {
+                    ShaderProgram.prependVertexCode = "#version 300 es\n";
+                    ShaderProgram.prependFragmentCode = "#version 300 es\n";
+                }
+
 
                 program = new ShaderProgram(vertexShader,fragmentShader);
                 /*
@@ -162,7 +174,7 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
             public void begin(Camera camera, RenderContext context) {
                 program.bind();
                 program.setUniformMatrix("u_projViewTrans", camera.combined);
-                context.setDepthTest(GL32.GL_LESS);
+                context.setDepthTest(GL30.GL_LESS);
                 //context.setDepthTest(GL30.GL_LEQUAL);
 
                 ColorAttribute ambientLight = (ColorAttribute) renderable.environment.get(ColorAttribute.AmbientLight);
@@ -251,7 +263,7 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
                 program.setUniformf("u_moveY", decalTransform.moveY);
                 program.setUniform2fv("u_uvOffset", decalTransform.uvOffset,0,2);
                 program.setUniformi("u_texture", 0);
-                context.setDepthTest(GL32.GL_LESS);
+                context.setDepthTest(GL30.GL_LESS);
                 //context.setDepthTest(GL30.GL_LEQUAL);
             }
 
@@ -295,7 +307,7 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
         @Override
         public void begin(Camera camera, RenderContext context) {
             program.bind();
-            context.setDepthTest(GL32.GL_LEQUAL);
+            context.setDepthTest(GL30.GL_LEQUAL);
 
             program.setUniformMatrix("u_projViewTrans", camera.combined);
 
@@ -342,14 +354,27 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
 
         @Override
         public void init() {
-            ShaderProgram.prependVertexCode = "#version 300 es\n#define INSTANCED\n";
-            ShaderProgram.prependFragmentCode = "#version 300 es\n";
+
+            if (use150)
+            {
+                ShaderProgram.prependVertexCode = "#version 150\n#define INSTANCED\n";
+                ShaderProgram.prependFragmentCode = "#version 150\n";
+
+                program = new ShaderProgram(Gdx.files.internal("shaders/glsl150/instanced.vert"),
+                        Gdx.files.internal("shaders/glsl150/instanced.frag"));
+            }
+            else {
+                ShaderProgram.prependVertexCode = "#version 300 es\n#define INSTANCED\n";
+                ShaderProgram.prependFragmentCode = "#version 300 es\n";
+
+                program = new ShaderProgram(Gdx.files.internal("shaders/instanced.vert"),
+                        Gdx.files.internal("shaders/instanced.frag"));
+            }
 
             //program = new ShaderProgram(vertexShader,fragmentShader);
 
 
-                program = new ShaderProgram(Gdx.files.internal("shaders/instanced.vert"),
-                    Gdx.files.internal("shaders/instanced.frag"));
+
 
 
             if (!program.isCompiled()) {
@@ -380,7 +405,7 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
             this.context = context;
             program.bind();
             program.setUniformMatrix("u_projViewTrans", camera.combined);
-            context.setDepthTest(GL32.GL_LESS);
+            context.setDepthTest(GL30.GL_LESS);
             //program.setUniformMatrix("u_impostorRotationMatrix", renderable.worldTransform);
 
 
@@ -390,12 +415,33 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
 
         @Override
         public void init() {
+
+            if (use150)
+            {
+                ShaderProgram.prependVertexCode = "#version 150\n";
+                ShaderProgram.prependFragmentCode = "#version 150\n";
+
+                program = new ShaderProgram(Gdx.files.internal("shaders/glsl150/decalinstanced.vert"),
+                        Gdx.files.internal("shaders/glsl150/decalinstanced.frag"));
+            }
+            else {
+                ShaderProgram.prependVertexCode = "#version 300 es\n";
+                ShaderProgram.prependFragmentCode = "#version 300 es\n";
+
+                program = new ShaderProgram(Gdx.files.internal("shaders/decalinstanced.vert"),
+                        Gdx.files.internal("shaders/decalinstanced.frag"));
+            }
+
+            /*
+
             ShaderProgram.prependVertexCode = "#version 300 es\n";
             ShaderProgram.prependFragmentCode = "#version 300 es\n";
 
 
             program = new ShaderProgram(Gdx.files.internal("shaders/decalinstanced.vert"),
                     Gdx.files.internal("shaders/decalinstanced.frag"));
+
+             */
 
             if (!program.isCompiled()) {
                 throw new GdxRuntimeException("Shader compile error: " + program.getLog());
@@ -452,7 +498,7 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
             camPos[1] = camera.position.y;
             camPos[2] = camera.position.z;
             program.setUniform3fv("u_camPos", camPos,0,3);
-            context.setDepthTest(GL32.GL_LESS);
+            context.setDepthTest(GL30.GL_LESS);
             //program.setUniformMatrix("u_impostorRotationMatrix", renderable.worldTransform);
 
 
@@ -462,12 +508,32 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
 
         @Override
         public void init() {
+
+            if (use150)
+            {
+                ShaderProgram.prependVertexCode = "#version 150\n";
+                ShaderProgram.prependFragmentCode = "#version 150\n";
+
+                program = new ShaderProgram(Gdx.files.internal("shaders/glsl150/decalinstancedGPUheavy.vert"),
+                        Gdx.files.internal("shaders/glsl150/decalinstanced.frag"));
+            }
+            else {
+                ShaderProgram.prependVertexCode = "#version 300 es\n";
+                ShaderProgram.prependFragmentCode = "#version 300 es\n";
+
+                program = new ShaderProgram(Gdx.files.internal("shaders/decalinstancedGPUheavy.vert"),
+                        Gdx.files.internal("shaders/decalinstanced.frag"));
+            }
+
+            /*
             ShaderProgram.prependVertexCode = "#version 300 es\n";
             ShaderProgram.prependFragmentCode = "#version 300 es\n";
 
 
             program = new ShaderProgram(Gdx.files.internal("shaders/decalinstancedGPUheavy.vert"),
                     Gdx.files.internal("shaders/decalinstanced.frag"));
+
+             */
 
             if (!program.isCompiled()) {
                 throw new GdxRuntimeException("Shader compile error: " + program.getLog());

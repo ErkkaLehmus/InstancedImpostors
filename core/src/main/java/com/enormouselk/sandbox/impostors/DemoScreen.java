@@ -4,7 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL32;
+import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -128,7 +128,7 @@ public class DemoScreen implements Screen {
         this.owner = owner;
     }
 
-    public void initGraphics(DemoEventListener listener, Array<LodSettings> lodSettings, int worldSize, int treeDensity, float decalDistance, int textureSize, int chunkSizeInTiles, int bufferSize, boolean showTerrain)
+    public void initGraphics(DemoEventListener listener, Array<LodSettings> lodSettings, int worldSize, int treeDensity, float decalDistance, int textureSize, int chunkSizeInTiles, int bufferSize, boolean showTerrain, boolean use150)
     {
         if (listener != null) listener.working("initializing...");
 
@@ -173,7 +173,7 @@ public class DemoScreen implements Screen {
             }
         }
 
-        init();
+        init(use150);
     }
 
     public void initLOD(DemoEventListener listener)
@@ -248,11 +248,11 @@ public class DemoScreen implements Screen {
 
     @Override
     public void show() {
-        Gdx.gl30.glEnable(GL32.GL_DEPTH_TEST);
-        Gdx.gl30.glEnable(GL32.GL_CULL_FACE);
-        //Gdx.gl30.glDisable(GL32.GL_CULL_FACE);
-        Gdx.gl30.glCullFace(GL32.GL_BACK);
-        Gdx.gl30.glDisable(GL32.GL_BLEND);
+        Gdx.gl30.glEnable(GL30.GL_DEPTH_TEST);
+        Gdx.gl30.glEnable(GL30.GL_CULL_FACE);
+        //Gdx.gl30.glDisable(GL30.GL_CULL_FACE);
+        Gdx.gl30.glCullFace(GL30.GL_BACK);
+        Gdx.gl30.glDisable(GL30.GL_BLEND);
     }
 
     @Override
@@ -678,8 +678,9 @@ public class DemoScreen implements Screen {
         camera.update();
     }
 
-    private void init() {
+    private void init(boolean use150) {
         instancedShaderProvider = new InstancedShaderProviderGPU(null);
+        InstancedShaderProviderGPU.use150 = use150;
 
         instancedTreeShader = new InstancedShaderProviderGPU.InstancedShader();
         impostorShader = new InstancedShaderProviderGPU.ImpostorShader();

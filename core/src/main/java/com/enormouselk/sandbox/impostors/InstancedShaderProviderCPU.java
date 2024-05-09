@@ -3,7 +3,7 @@ package com.enormouselk.sandbox.impostors;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.GL30;
-import com.badlogic.gdx.graphics.GL32;
+import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.g3d.Renderable;
 import com.badlogic.gdx.graphics.g3d.Shader;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
@@ -67,7 +67,7 @@ public class InstancedShaderProviderCPU extends DefaultShaderProvider implements
             public void begin(Camera camera, RenderContext context) {
                 program.bind();
                 program.setUniformMatrix("u_projViewTrans", camera.combined);
-                context.setDepthTest(GL32.GL_LESS);
+                context.setDepthTest(GL30.GL_LESS);
                 //context.setDepthTest(GL30.GL_LEQUAL);
 
                 ColorAttribute ambientLight = (ColorAttribute) renderable.environment.get(ColorAttribute.AmbientLight);
@@ -148,7 +148,7 @@ public class InstancedShaderProviderCPU extends DefaultShaderProvider implements
             public void begin(Camera camera, RenderContext context) {
                 program.bind();
                 program.setUniformMatrix("u_projViewTrans", camera.combined);
-                context.setDepthTest(GL32.GL_LESS);
+                context.setDepthTest(GL30.GL_LESS);
                 //context.setDepthTest(GL30.GL_LEQUAL);
 
                 ColorAttribute ambientLight = (ColorAttribute) renderable.environment.get(ColorAttribute.AmbientLight);
