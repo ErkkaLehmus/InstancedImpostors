@@ -22,6 +22,9 @@ import com.badlogic.gdx.utils.GdxRuntimeException;
 
 public class InstancedShaderProviderGPU extends DefaultShaderProvider implements InstancedShaderProvider {
 
+    //public static final String GLSL_VERSION = "#version 330 core\n";
+    public static final String GLSL_VERSION_DEFAULT = "#version 300 es\n";
+    public static final String GLSL_VERSION_150 = "#version 150 core\n";
     public static boolean use150 = false;
 
     DefaultShader.Config config;
@@ -121,18 +124,22 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
 
                 if (use150)
                 {
-                    ShaderProgram.prependVertexCode = "#version 150\n";
-                    ShaderProgram.prependFragmentCode = "#version 150\n";
+                    ShaderProgram.prependVertexCode = GLSL_VERSION_150;
+                    ShaderProgram.prependFragmentCode = GLSL_VERSION_150;
 
+                    /*
                     program = new ShaderProgram(Gdx.files.internal("shaders/glsl150/instanced.vert"),
                             Gdx.files.internal("shaders/glsl150/instanced.frag"));
+
+                     */
                 }
                 else
                 {
-                    ShaderProgram.prependVertexCode = "#version 300 es\n";
-                    ShaderProgram.prependFragmentCode = "#version 300 es\n";
-                    program = new ShaderProgram(vertexShader,fragmentShader);
+                    ShaderProgram.prependVertexCode = GLSL_VERSION_DEFAULT;
+                    ShaderProgram.prependFragmentCode = GLSL_VERSION_DEFAULT;
+
                 }
+                program = new ShaderProgram(vertexShader,fragmentShader);
 
 
 
@@ -222,18 +229,22 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
 
                 if (use150)
                 {
-                    ShaderProgram.prependVertexCode = "#version 150\n#define INSTANCED\n";
-                    ShaderProgram.prependFragmentCode = "#version 150\n";
+                    ShaderProgram.prependVertexCode = GLSL_VERSION_150+"#define INSTANCED\n";
+                    ShaderProgram.prependFragmentCode = GLSL_VERSION_150;
 
+                    /*
                     program = new ShaderProgram(Gdx.files.internal("shaders/glsl150/instanced.vert"),
                             Gdx.files.internal("shaders/glsl150/instanced.frag"));
+
+                     */
                 }
                 else {
-                    ShaderProgram.prependVertexCode = "#version 300 es\n#define INSTANCED\n";
-                    ShaderProgram.prependFragmentCode = "#version 300 es\n";
+                    ShaderProgram.prependVertexCode = GLSL_VERSION_DEFAULT+"#define INSTANCED\n";
+                    ShaderProgram.prependFragmentCode = GLSL_VERSION_DEFAULT;
 
-                    program = new ShaderProgram(vertexShader, fragmentShader);
+
                 }
+                program = new ShaderProgram(vertexShader, fragmentShader);
 
                 /*
                 program = new ShaderProgram(Gdx.files.internal("shaders/instanced.vert"),
@@ -287,21 +298,22 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
 
                 if (use150)
                 {
-                    ShaderProgram.prependVertexCode = "#version 150\n";
-                    ShaderProgram.prependFragmentCode = "#version 150\n";
+                    ShaderProgram.prependVertexCode = GLSL_VERSION_150;
+                    ShaderProgram.prependFragmentCode = GLSL_VERSION_150;
 
-
+                    /*
                     program = new ShaderProgram(Gdx.files.internal("shaders/glsl150/decalinstanced.vert"),
                             Gdx.files.internal("shaders/glsl150/decalinstanced.frag"));
+
+                     */
                 }
                 else {
-                    ShaderProgram.prependVertexCode = "#version 300 es\n";
-                    ShaderProgram.prependFragmentCode = "#version 300 es\n";
-
-
-                    program = new ShaderProgram(Gdx.files.internal("shaders/decalinstanced.vert"),
-                            Gdx.files.internal("shaders/decalinstanced.frag"));
+                    ShaderProgram.prependVertexCode = GLSL_VERSION_DEFAULT;
+                    ShaderProgram.prependFragmentCode = GLSL_VERSION_DEFAULT;
                 }
+
+                program = new ShaderProgram(Gdx.files.internal("shaders/decalinstanced.vert"),
+                        Gdx.files.internal("shaders/decalinstanced.frag"));
 
                 if (!program.isCompiled()) {
                     throw new GdxRuntimeException("Shader compile error: " + program.getLog());
@@ -384,25 +396,22 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
 
             if (use150)
             {
-                ShaderProgram.prependVertexCode = "#version 150\n#define INSTANCED\n";
-                ShaderProgram.prependFragmentCode = "#version 150\n";
+                ShaderProgram.prependVertexCode = GLSL_VERSION_150+"#define INSTANCED\n";
+                ShaderProgram.prependFragmentCode = GLSL_VERSION_150;
 
+                /*
                 program = new ShaderProgram(Gdx.files.internal("shaders/glsl150/instanced.vert"),
                         Gdx.files.internal("shaders/glsl150/instanced.frag"));
+
+                 */
             }
             else {
-                ShaderProgram.prependVertexCode = "#version 300 es\n#define INSTANCED\n";
-                ShaderProgram.prependFragmentCode = "#version 300 es\n";
-
-                program = new ShaderProgram(Gdx.files.internal("shaders/instanced.vert"),
-                        Gdx.files.internal("shaders/instanced.frag"));
+                ShaderProgram.prependVertexCode = GLSL_VERSION_DEFAULT+"#define INSTANCED\n";
+                ShaderProgram.prependFragmentCode = GLSL_VERSION_DEFAULT;
             }
 
-            //program = new ShaderProgram(vertexShader,fragmentShader);
-
-
-
-
+            program = new ShaderProgram(Gdx.files.internal("shaders/instanced.vert"),
+                    Gdx.files.internal("shaders/instanced.frag"));
 
             if (!program.isCompiled()) {
                 throw new GdxRuntimeException("Shader compile error: " + program.getLog());
@@ -445,30 +454,22 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
 
             if (use150)
             {
-                ShaderProgram.prependVertexCode = "#version 150\n";
-                ShaderProgram.prependFragmentCode = "#version 150\n";
+                ShaderProgram.prependVertexCode = GLSL_VERSION_150;
+                ShaderProgram.prependFragmentCode = GLSL_VERSION_150;
 
+                /*
                 program = new ShaderProgram(Gdx.files.internal("shaders/glsl150/decalinstanced.vert"),
                         Gdx.files.internal("shaders/glsl150/decalinstanced.frag"));
+
+                 */
             }
             else {
-                ShaderProgram.prependVertexCode = "#version 300 es\n";
-                ShaderProgram.prependFragmentCode = "#version 300 es\n";
-
-                program = new ShaderProgram(Gdx.files.internal("shaders/decalinstanced.vert"),
-                        Gdx.files.internal("shaders/decalinstanced.frag"));
+                ShaderProgram.prependVertexCode = GLSL_VERSION_DEFAULT;
+                ShaderProgram.prependFragmentCode = GLSL_VERSION_DEFAULT;
             }
-
-            /*
-
-            ShaderProgram.prependVertexCode = "#version 300 es\n";
-            ShaderProgram.prependFragmentCode = "#version 300 es\n";
-
 
             program = new ShaderProgram(Gdx.files.internal("shaders/decalinstanced.vert"),
                     Gdx.files.internal("shaders/decalinstanced.frag"));
-
-             */
 
             if (!program.isCompiled()) {
                 throw new GdxRuntimeException("Shader compile error: " + program.getLog());
@@ -538,29 +539,22 @@ public class InstancedShaderProviderGPU extends DefaultShaderProvider implements
 
             if (use150)
             {
-                ShaderProgram.prependVertexCode = "#version 150\n";
-                ShaderProgram.prependFragmentCode = "#version 150\n";
+                ShaderProgram.prependVertexCode = GLSL_VERSION_150;
+                ShaderProgram.prependFragmentCode = GLSL_VERSION_150;
 
+                /*
                 program = new ShaderProgram(Gdx.files.internal("shaders/glsl150/decalinstancedGPUheavy.vert"),
                         Gdx.files.internal("shaders/glsl150/decalinstanced.frag"));
+
+                 */
             }
             else {
-                ShaderProgram.prependVertexCode = "#version 300 es\n";
-                ShaderProgram.prependFragmentCode = "#version 300 es\n";
-
-                program = new ShaderProgram(Gdx.files.internal("shaders/decalinstancedGPUheavy.vert"),
-                        Gdx.files.internal("shaders/decalinstanced.frag"));
+                ShaderProgram.prependVertexCode = GLSL_VERSION_DEFAULT;
+                ShaderProgram.prependFragmentCode = GLSL_VERSION_DEFAULT;
             }
-
-            /*
-            ShaderProgram.prependVertexCode = "#version 300 es\n";
-            ShaderProgram.prependFragmentCode = "#version 300 es\n";
-
 
             program = new ShaderProgram(Gdx.files.internal("shaders/decalinstancedGPUheavy.vert"),
                     Gdx.files.internal("shaders/decalinstanced.frag"));
-
-             */
 
             if (!program.isCompiled()) {
                 throw new GdxRuntimeException("Shader compile error: " + program.getLog());

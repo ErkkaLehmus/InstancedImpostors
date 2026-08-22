@@ -108,8 +108,8 @@ public class InstancedShaderProviderCPU extends DefaultShaderProvider implements
 
             @Override
             public void init() {
-                ShaderProgram.prependVertexCode = "#version 300 es\n";
-                ShaderProgram.prependFragmentCode = "#version 300 es\n";
+                ShaderProgram.prependVertexCode = "#version 330 core\n";
+                ShaderProgram.prependFragmentCode = "#version 330 core\n";
                 program = new ShaderProgram(Gdx.files.internal("shaders/instanced.vert"),
                         Gdx.files.internal("shaders/instanced.frag"));
                 if (!program.isCompiled()) {
@@ -189,8 +189,8 @@ public class InstancedShaderProviderCPU extends DefaultShaderProvider implements
 
             @Override
             public void init() {
-                ShaderProgram.prependVertexCode = "#version 300 es\n#define INSTANCED\n";
-                ShaderProgram.prependFragmentCode = "#version 300 es\n";
+                ShaderProgram.prependVertexCode = "#version 330 core\n#define INSTANCED\n";
+                ShaderProgram.prependFragmentCode = "#version 330 core\n";
                 program = new ShaderProgram(Gdx.files.internal("shaders/instanced.vert"),
                     Gdx.files.internal("shaders/instanced.frag"));
                 if (!program.isCompiled()) {
@@ -224,8 +224,8 @@ public class InstancedShaderProviderCPU extends DefaultShaderProvider implements
 
             @Override
             public void init() {
-                ShaderProgram.prependVertexCode = "#version 300 es\n";
-                ShaderProgram.prependFragmentCode = "#version 300 es\n";
+                ShaderProgram.prependVertexCode = "#version 330 core\n";
+                ShaderProgram.prependFragmentCode = "#version 330 core\n";
                 program = new ShaderProgram(Gdx.files.internal("shaders/decalinstanced.vert"),
                     Gdx.files.internal("shaders/decalinstanced.frag"));
                 if (!program.isCompiled()) {

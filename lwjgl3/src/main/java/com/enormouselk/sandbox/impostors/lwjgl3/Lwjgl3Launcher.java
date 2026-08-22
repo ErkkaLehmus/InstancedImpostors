@@ -7,6 +7,7 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.graphics.glutils.HdpiMode;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.enormouselk.sandbox.impostors.ImpostorDemo;
+import com.enormouselk.sandbox.impostors.InstancedShaderProviderGPU;
 
 /** Launches the desktop (LWJGL3) application. */
 public class Lwjgl3Launcher {
@@ -26,7 +27,7 @@ public class Lwjgl3Launcher {
         ImpostorDemo demo = new ImpostorDemo();
         Lwjgl3ApplicationConfiguration configuration = getDefaultConfiguration();
 
-        //And then we define the OpenGL ES version 3.0, emulation based on OpenGL version 4.5
+        //First we try OpenGL 4.5
         configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL30,4,5);
 
         Lwjgl3Application app;
@@ -35,8 +36,12 @@ public class Lwjgl3Launcher {
         } catch (Exception e) {
             if (e.getMessage().contains("create window"))
             {
+                System.out.println("Revert to OpenGL 3.2");
                 //apparently OpenGL 4.5 failed on the user machine
                 //Revert to 3.2, maybe it could work, then?
+
+                //especially for Mac we need to set glsl language version
+                InstancedShaderProviderGPU.use150 = true;
                 configuration.setOpenGLEmulation(Lwjgl3ApplicationConfiguration.GLEmulation.GL30,3,2);
                 try {
                     app = new Lwjgl3Application(demo,configuration);

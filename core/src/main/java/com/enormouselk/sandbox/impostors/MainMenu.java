@@ -182,7 +182,7 @@ public class MainMenu implements Screen {
         checkBoxOptimized = new CheckBox("Use optimized models",skin);
         checkBoxImpostors = new CheckBox("Use impostor decals",skin);
         checkBoxTerrain = new CheckBox("Show terrain",skin);
-        checkBoxUse150 = new CheckBox("Revert to glsl version 150",skin);
+        checkBoxUse150 = new CheckBox("Revert to glsl version 150 (Mac needs this!)",skin);
 
         resetButton = new TextButton("reset to defaults",skin);
         resetButton.addListener(new ChangeListener() {
@@ -333,7 +333,7 @@ public class MainMenu implements Screen {
         window.add(checkBoxTerrain).left().row();
 
         window.add(" ");
-        checkBoxUse150.setChecked(false);
+        checkBoxUse150.setChecked(InstancedShaderProviderGPU.use150);
         window.add(checkBoxUse150).left().row();
 
         window.add(resetButton).padTop(32).padBottom(32).padRight(32);
