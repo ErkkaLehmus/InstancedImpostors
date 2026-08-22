@@ -85,37 +85,27 @@ public class MainMenu implements Screen {
 
         // Check if for GL30 profile
         if (Gdx.gl30 == null) {
-            throw new GdxRuntimeException("GLES 3.0 profile required for this test");
+            throw new GdxRuntimeException("GLES 3.0 profile required for the demo!");
         }
 
         lodSettings = new Array<>(3);
-
-
-        //UI.setSkipGdxVersionCheck(true);
-        //UI.load();
-        //UI.load(UI.SkinScale.X1);
-        //UI.setDefaultTitleAlign(Align.center);
 
         this.uiCam = new OrthographicCamera(Gdx.graphics.getWidth(),Gdx.graphics.getWidth());
         uiCam.translate(Gdx.graphics.getWidth()/2f,Gdx.graphics.getWidth()/2f, 0);
         uiCam.update();
 
         stage = new Stage(new ScreenViewport(uiCam));
-        //stage = new Stage(new StretchViewport(1024,800));
-        //stage = new Stage(new FillViewport(1024,1024,uiCam));
 
         root = new Table();
         root.setFillParent(true);
         stage.addActor(root);
 
-        //window = new Window("--- INSTANCED IMPOSTORS ---");
         window = new Table(skin);
         root.add(window).center();
 
         sliderWorldSize = new Slider(minWorldSize,maxWorldSize,1,false,skin);
         sliderWorldSize.setValue(defaultWorldSize);
         legendWorldSize = new Label(String.format(defaultLocale,sizeTemplate,defaultWorldSize * defaultChunkSize * 10),skin);
-        //final Label legendWorldSize = new Label(" ");
 
         sliderTreeDensity = new Slider(1,maxTreeDensity,1,false,skin);
         sliderTreeDensity.setValue(defaultTreeDensity);
@@ -278,7 +268,7 @@ public class MainMenu implements Screen {
 
         window.add("If you plan anything like a 3D game with lots of objects you can try different parameters to find out how much stuff").colspan(3).row();
         window.add("there can be without impairing the performance.").padTop(2).colspan(3).row();
-        window.add("Maximum OpenGL version supported by your device: "+getMaxOpenGLVersion()).padTop(2).colspan(3).row();
+        window.add("OpenGL version supported by your device: "+getMaxOpenGLVersion()).padTop(2).colspan(3).row();
         window.add("Maximum amount of trees is capped to "+String.format(defaultLocale,amountTemplate,(int)absoluteMaxTrees)).padTop(2).colspan(3).row();
 
         window.add(" ");

@@ -15,12 +15,16 @@ Although this is for my own commercial game project, I wanted to release this pi
 yours
  Erkka from Enormous Elk
 
-PS. a quick note at 6th of April 2024; the current version source code is rather messy, and there are unused pieces of codes lingering around.
+QUICK NOTES:
+
+- at 6th of April 2024; the current version source code is rather messy, and there are unused pieces of codes lingering around.
     That is because I've been experimenting with different optimization methods, and leaving the various versions of test code just in case I'd need them later.
     Also, many of the later additions are not properly commented, so it might be a pain to figure out how the code works.
     In case you wish to copy, modify and extend it for your own needs, feel free to do so. And just send me a message if there is something you struggle to figure out.
 
-PPS. at 7th of May 2024; the source code is still a mess, as I've been busy with other things. Now just adding a quick patch trying to figure out how to best handle different gles formats and emulations on different backends about which I know next to nothing =)
+- at 7th of May 2024; the source code is still a mess, as I've been busy with other things. Now just adding a quick patch trying to figure out how to best handle different gles formats and emulations on different backends about which I know next to nothing =)
+
+- at 22nd of August 2026; Briefly returning back to the code after two years =) Again, didn't have time nor energy to clean up the code, but now it is tested to work on Mac and Linux, I hope it still works on Windows as well.
 
 ## Background
 
