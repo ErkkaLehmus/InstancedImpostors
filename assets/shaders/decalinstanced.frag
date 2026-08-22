@@ -1,5 +1,4 @@
-//precision is only needed on Anrdoid (and web?)
-//precision mediump float;
+precision mediump float;
 
 uniform sampler2D u_texture;
 in vec2 TexCoords;

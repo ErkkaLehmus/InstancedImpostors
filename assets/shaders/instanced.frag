@@ -1,5 +1,4 @@
-//precision is only needed on Anrdoid (and web?)
-//precision mediump float;
+precision mediump float;
 
 in vec3 v_ambientLight;
 in vec3 v_lightDiffuse;
